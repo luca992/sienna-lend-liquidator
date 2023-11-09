@@ -29,6 +29,7 @@ kotlin {
                 implementation(compose.foundation)
                 implementation(compose.runtime)
                 implementation(libs.io.eqoty.secretk.client)
+                implementation(libs.co.touchlab.kermit)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.io.github.luca992.getenv)
             }
