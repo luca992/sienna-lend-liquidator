@@ -22,16 +22,26 @@ kotlin {
     applyDefaultHierarchyTemplate()
 
     sourceSets {
+        all {
+            languageSettings.apply {
+                optIn("kotlinx.serialization.ExperimentalSerializationApi")
+            }
+        }
         val commonMain by getting {
             dependencies {
                 implementation(compose.ui)
                 implementation(compose.material3)
                 implementation(compose.foundation)
                 implementation(compose.runtime)
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.serialization.kotlinx.json)
+                implementation(libs.ktor.client.contentNegotiation)
                 implementation(libs.io.eqoty.secretk.client)
+                implementation(libs.io.eqoty.secretk.secret.std.msgs)
                 implementation(libs.co.touchlab.kermit)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.io.github.luca992.getenv)
+                implementation(libs.bignum)
             }
         }
 
@@ -74,14 +84,11 @@ compose.experimental {
 fun createEnvVariables(environment: Map<String, Any>): MutableMap<String, Any> {
     val envMap = mutableMapOf<String, Any>()
     envMap.putAll(environment)
-    val properties = Properties()
-    val localPropertiesFile = project.rootProject.file("local.properties")
+    val localPropertiesFile = project.rootProject.file("config.json")
     if (localPropertiesFile.exists()) {
-        properties.load(localPropertiesFile.reader())
+        envMap.put("CONFIG", localPropertiesFile.reader().readText())
     }
-    properties["MNEMONIC"]?.let {
-        envMap.put("MNEMONIC", it)
-    }
+
     return envMap
 }
 

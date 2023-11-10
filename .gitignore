@@ -161,3 +161,4 @@ admin-console/externals/
 moko-resources-generated.js
 pack-libphonenumber-resources-generated.js
 .run/desktop.run.xml
+config.json

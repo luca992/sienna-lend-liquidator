@@ -13,10 +13,10 @@ kotlin = "1.9.20"
 agp = "8.1.2"
 
 kotlinx-serialization = "1.6.0"
-
+ktor = "2.3.5"
 kermit = "2.0.2"
 
-secretk = "6.1.0"
+secretk = "6.2.0"
 
 compose-jb = "1.5.10"
 getenv = "0.2.0"
@@ -24,17 +24,21 @@ getenv = "0.2.0"
 bignum = "0.3.8"
 
 
-
 [libraries]
 
 
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 
+ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 co-touchlab-kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 
 bignum = { module = "com.ionspin.kotlin:bignum", version.ref = "bignum" }
 bignum-serialization-kotlinx = { module = "com.ionspin.kotlin:bignum-serialization-kotlinx", version.ref = "bignum" }
 
 io-eqoty-secretk-client = { module = "io.eqoty.secretk:client", version.ref = "secretk" }
-
+io-eqoty-secretk-secret-std-msgs = { module = "io.eqoty.secretk:secret-std-msgs", version.ref = "secretk" }
 io-github-luca992-getenv = { module = "io.github.luca992.getenv-kt:getenv", version.ref = "getenv" }
