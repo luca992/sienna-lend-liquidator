@@ -3,28 +3,43 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import co.touchlab.kermit.Logger
-import types.Config
+import com.ionspin.kotlin.bignum.serialization.kotlinx.biginteger.bigIntegerhumanReadableSerializerModule
 import io.eqoty.secretk.client.SigningCosmWasmClient
 import io.eqoty.secretk.wallet.DirectSigningWallet
 import io.getenv
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
+import types.Config
 
 val logger = Logger.withTag("liquidator")
-val json = Json { namingStrategy = JsonNamingStrategy.SnakeCase }
+val json = Json {
+    namingStrategy = JsonNamingStrategy.SnakeCase
+    serializersModule = bigIntegerhumanReadableSerializerModule
+}
 
 @Composable
 fun Repository.App() {
-    var text by remember { mutableStateOf("Hello, World!") }
+    var text by remember { mutableStateOf("Start Liquidator!") }
+    var liquidator by remember { mutableStateOf<Liquidator?>(null) }
+    val coroutineScope = rememberCoroutineScope()
     MaterialTheme {
         Button(onClick = {
-            text = "Hello, Liquidator!"
+            if (liquidator == null) {
+                text = "Liquidator is not initialized!"
+                return@Button
+            } else {
+                text = "Liquidator started!"
+                coroutineScope.launch {
+                    liquidator!!.runOnce()
+                }
+            }
 
         }) {
             Text(text)
         }
         LaunchedEffect(Unit) {
-            Liquidator(this@App).create(config)
+            liquidator = Liquidator.create(this@App)
         }
     }
 }

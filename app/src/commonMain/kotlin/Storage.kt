@@ -1,3 +1,4 @@
+import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import com.ionspin.kotlin.bignum.integer.BigInteger
 import com.ionspin.kotlin.bignum.integer.toBigInteger
@@ -61,20 +62,22 @@ class Storage private constructor(
 //        )
     }
 
-//    fun gas_cost_usd(amount: BigNumber): BigNumber {
-//        return this.usd_value(amount, 'SCRT', 6)
-//    }
+    fun gas_cost_usd(amount: BigDecimal): BigDecimal {
+        return this.usd_value(amount, "SCRT", 6)
+    }
 
-//    fun usd_value(
-//        amount: BigNumber,
-//        symbol: String,
-//        decimals: UInt
-//    ): BigNumber {
+    fun usd_value(
+        amount: BigDecimal,
+        symbol: String,
+        decimals: Int
+    ): BigDecimal {
+        TODO()
+//
 //        return normalize_denom(
-//            new BigNumber (this.prices[symbol]).multipliedBy(amount),
+//            prices[symbol]!!.times(amount),
 //            decimals
 //        )
-//    }
+    }
 
     suspend fun updatePrices() {
         val symbols = prices.keys.map { "symbols=${it}" }

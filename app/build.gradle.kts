@@ -42,6 +42,7 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.io.github.luca992.getenv)
                 implementation(libs.bignum)
+                implementation(libs.bignum.serialization.kotlinx)
             }
         }
 
