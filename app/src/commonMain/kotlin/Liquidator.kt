@@ -62,7 +62,7 @@ class Liquidator(val repo: Repository) {
             total = page.total
             start += limit
 
-            result.addAll(filter?.run { page.entries.filter { filter(it) } } ?: page.entries)
+            result.addAll(if (filter != null) page.entries.filter(filter) else page.entries)
 
         } while (start <= total)
 
