@@ -1,4 +1,4 @@
-import config.Config
+import types.Config
 import datalayer.sources.web2.HttpClient
 import io.eqoty.secretk.client.SigningCosmWasmClient
 

@@ -3,7 +3,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import co.touchlab.kermit.Logger
-import config.Config
+import types.Config
 import io.eqoty.secretk.client.SigningCosmWasmClient
 import io.eqoty.secretk.wallet.DirectSigningWallet
 import io.getenv

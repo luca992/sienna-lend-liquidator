@@ -1,4 +1,4 @@
-package config
+package types
 
 import io.eqoty.cosmwasm.std.types.ContractInfo
 import kotlinx.serialization.Serializable
