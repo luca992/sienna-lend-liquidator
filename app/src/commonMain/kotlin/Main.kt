@@ -27,15 +27,15 @@ val json = Json {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Repository.App() {
-    var text by remember { mutableStateOf("Liquidator is not initialized!") }
+    var buttonText by remember { mutableStateOf("Liquidator is not initialized!") }
     var liquidator by remember { mutableStateOf<Liquidator?>(null) }
-    var userBalanceTokenName by remember { mutableStateOf("") }
+    var userBalanceTokenLabel by remember { mutableStateOf("") }
     val balance by remember { derivedStateOf { liquidator?.storage?.userBalance } }
     LaunchedEffect(Unit) {
         liquidator = Liquidator.create(this@App)
-        text = "Query for loans to liquidate!"
+        buttonText = "Query for loans to liquidate!"
         client.getLabelByContractAddr(liquidator!!.storage.repository.config.token.address).let {
-            userBalanceTokenName = it
+            userBalanceTokenLabel = it
         }
     }
     val coroutineScope = rememberCoroutineScope()
@@ -48,7 +48,7 @@ fun Repository.App() {
                         Text("Liquidator")
                     },
                     actions = {
-                        Text("Balance: ${balance} $userBalanceTokenName")
+                        Text("Balance: ${balance} $userBalanceTokenLabel")
                     }
                 )
             }
@@ -58,22 +58,22 @@ fun Repository.App() {
             ) {
                 Button(onClick = {
                     if (liquidator == null) {
-                        text = "Liquidator is not initialized!"
+                        buttonText = "Liquidator is not initialized!"
                         return@Button
                     } else {
-                        text = "Working..."
+                        buttonText = "Working..."
                         coroutineScope.launch {
                             loans = liquidator!!.runOnce()
-                            text = "Query for loans to liquidate!"
+                            buttonText = "Query for loans to liquidate!"
                         }
                     }
 
                 }) {
-                    Text(text)
+                    Text(buttonText)
                 }
                 LazyColumn {
                     items(loans) { loan ->
-                        LoanCard(loan)
+                        LoanCard(loan, client)
                     }
                 }
             }
@@ -82,7 +82,9 @@ fun Repository.App() {
 }
 
 @Composable
-fun LoanCard(loan: Loan) {
+fun LoanCard(loan: Loan, client: SigningCosmWasmClient) {
+    val coroutineScope = rememberCoroutineScope()
+    var underlyingCollateralsLabel by remember { mutableStateOf("") }
     Card(
         modifier = Modifier.fillMaxWidth().padding(8.dp),
     ) {
@@ -103,6 +105,12 @@ fun LoanCard(loan: Loan) {
                 Text("Seizable USD: ${loan.candidate.seizable_usd.toPlainString()}")
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("Collateral's Market Symbol: ${loan.market.symbol}")
+                Text("Collateral's Underlying Contract Label: $underlyingCollateralsLabel")
+                coroutineScope.launch {
+                    client.getLabelByContractAddr(loan.market.underlying.address).let {
+                        underlyingCollateralsLabel = it
+                    }
+                }
                 Text("Collateral's Underlying Contract Address: ${loan.market.underlying.address}")
             }
         }
