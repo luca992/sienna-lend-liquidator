@@ -41,3 +41,8 @@ data class LendAccountLiquidity(
     /** If > 0 the account is currently below the collateral requirement and is subject to liquidation. */
     @Contextual val shortfall: BigInteger
 )
+
+data class Loan(
+    val candidate: Candidate,
+    val market: Market,
+)

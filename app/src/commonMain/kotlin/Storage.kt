@@ -7,6 +7,7 @@ import io.eqoty.secret.std.contract.msg.Snip20Msgs
 import io.eqoty.secret.std.types.Permit
 import io.eqoty.secretk.client.Json
 import kotlinx.serialization.encodeToString
+import utils.normalizeDenom
 
 class Storage private constructor(
     val repository: Repository,
@@ -71,12 +72,10 @@ class Storage private constructor(
         symbol: String,
         decimals: Int
     ): BigDecimal {
-        TODO()
-//
-//        return normalize_denom(
-//            prices[symbol]!!.times(amount),
-//            decimals
-//        )
+        return normalizeDenom(
+            prices[symbol]!!.times(amount),
+            decimals
+        )
     }
 
     suspend fun updatePrices() {
