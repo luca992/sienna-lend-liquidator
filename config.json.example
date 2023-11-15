@@ -1,0 +1,35 @@
+{
+  "chain_id": "secret-4",
+  "mnemonic": "",
+  "api_url": "https://secret-4.api.trivium.network:1317",
+  "coin_gecko_url": "https://api.coingecko.com/api/",
+  "band_url": "https://laozi1.bandchain.org/api/",
+  "interval": 120000,
+  "max_price_impact": 0.05,
+  "gas_costs": {
+    "swap": 140000,
+    "liquidate": 900000,
+    "withdraw": 110000
+  },
+  "token": {
+    "address": "secret1k6u0cy4feepm6pehnz804zmwakuwdapm69tuc4",
+    "code_hash": "f6be719b3c6feb498d3554ca0398eb6b7e7db262acb33f84a8f12106da6bbb09",
+    "underlying_vk": ""
+  },
+  "overseer": {
+    "address": "secret1pf88n9hm64mn58aw48jxfs2fsvzr07svnrrdlv",
+    "code_hash": "bd573658377d724c691715e267c4765b4643999e35f2c143f03d57f00fde4454"
+  },
+  "multicall": {
+    "address": "secret17k2x37ld48v29pat9qwq0lvdg5k2qsy0unt54d",
+    "code_hash": "d8fcff74ec4165391c0999410b679a24ff9446d4d4518807c5ca29a8fbe554c9"
+  },
+  "router": {
+    "address": "secret1re647lyue84k82j4a54gk9y7lmxg44w4j8zvg6",
+    "code_hash": "DF5F3E7D91702AB8E62DEE61617B3CD9AA19501BC07DE7B67F7182C1955FE07A"
+  },
+  "factory": {
+    "address": "secret18sq0ux28kt2z7dlze2mu57d3ua0u5ayzwp6v2r",
+    "code_hash": "A616944687060EA30286BDDA81418FED399FE155741EFDDE7CDD9ADDFBA486DB"
+  }
+}
