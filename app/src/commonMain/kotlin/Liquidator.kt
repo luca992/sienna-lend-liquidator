@@ -360,7 +360,7 @@ class Liquidator(
         )
     }
 
-    fun clamp(value: BigInteger, max: BigInteger): BigInteger {
+    private fun clamp(value: BigInteger, max: BigInteger): BigInteger {
         return if (value > max) max else value
     }
 
