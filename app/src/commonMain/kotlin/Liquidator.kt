@@ -18,7 +18,7 @@ val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST", "AAVE")
 //"secret149e7c5j7w24pljg6em6zj2p557fuyhg8cnk7z8", // sLUNA Luna
 //"secret1w8d0ntrhrys4yzcfxnwprts7gfg5gfw86ccdpf", // sLUNA2 Luna
 //"secret1qem6e0gw2wfuzyr9sgthykvk0zjcrzm6lu94ym", // sUSTC  Terra
-val ASSETS_TO_IGNORE_SEIZING: List<UnderlyingAssetId> = listOf(stkdScrtAssetId)
+val ASSETS_TO_IGNORE_SEIZING: List<UnderlyingAssetId> = listOf(stkdScrtAssetId, symbolToAssetId("USDT"))
 
 class Liquidator(
     val repo: Repository,
@@ -181,7 +181,8 @@ class Liquidator(
         borrowers.forEach { x -> x.markets.sortWith(sortByPrice) }
 
         val calcNet = { borrower: LendMarketBorrower ->
-            // the current amount the borrower has to repay to the market in the markets currency
+            // the current amount the borrower has to repay to the market in the markets currency with a max of the
+            // clamped at the amount the person running this liquidator actually in their balance
             val payable = maxPayable(borrower)
 
             (payable * constants.premium * storage.underlyingAssetToPrice[borrower.markets[0].underlyingAssetId]!!).divide(

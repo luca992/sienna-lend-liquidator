@@ -71,7 +71,7 @@ suspend fun Repository.liquidate(
         ExecuteMsg(
             liquidate = ExecuteMsg.Liquidate(
                 borrower = loan.candidate.id,
-                collateral = loan.candidate.marketInfo.contract.address
+                collateral = loan.market.contract.address
             )
         )
     ).encodeBase64()
@@ -90,7 +90,6 @@ suspend fun Repository.liquidate(
         ),
     )
 
-    logger.d { "Liquidate msg: ${liquidateMsg.msg}" }
     return client.execute(listOf(liquidateMsg), txOptions = TxOptions(gasLimit = config.gasCosts.liquidate))
 }
 
