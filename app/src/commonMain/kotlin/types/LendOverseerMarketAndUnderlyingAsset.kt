@@ -18,6 +18,7 @@ data class LendOverseerMarketAndUnderlyingAsset(
 data class Candidate(
     val id: String,
     val payable: BigDecimal,
+    val payableUsd: BigDecimal,
     val seizable_usd: BigDecimal,
     val market_info: LendOverseerMarketAndUnderlyingAsset
 )

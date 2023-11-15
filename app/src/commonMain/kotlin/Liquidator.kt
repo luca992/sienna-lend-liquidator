@@ -251,6 +251,7 @@ class Liquidator(
                 candidate = Candidate(
                     id = borrower.id,
                     payable = payable,
+                    payableUsd = payable,
                     seizable_usd = bestSeizableUsd,
                     market_info = borrower.markets[marketIndex]
                 ),
@@ -272,7 +273,8 @@ class Liquidator(
                     candidate = Candidate(
                         id = borrower.id,
                         payable = payable,
-                        seizable_usd = this.storage.usdValue(seizable, m.underlyingAssetId, m.decimals),
+                        payableUsd = storage.usdValue(payable, market.underlyingAssetId, market.decimals),
+                        seizable_usd = storage.usdValue(seizable, m.underlyingAssetId, m.decimals),
                         market_info = m
                     ),
                 )
@@ -325,6 +327,7 @@ class Liquidator(
             candidate = Candidate(
                 id = borrower.id,
                 payable = bestPayable,
+                payableUsd = storage.usdValue(bestPayable, market.underlyingAssetId, market.decimals),
                 seizable_usd = bestSeizableUsd,
                 market_info = borrower.markets[marketIndex]
             ),
