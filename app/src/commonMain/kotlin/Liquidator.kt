@@ -173,6 +173,7 @@ class Liquidator(
         borrowers.forEach { x -> x.markets.sortWith(sortByPrice) }
 
         val calcNet = { borrower: LendMarketBorrower ->
+            // the current amount the borrower has to repay to the market in the markets currency
             val payable = maxPayable(borrower)
 
             (payable * constants.premium * storage.underlyingAssetToPrice[borrower.markets[0].underlyingAssetId]!!).divide(
@@ -181,6 +182,7 @@ class Liquidator(
             )
         }
 
+        // now sort the borrowers
         borrowers.sortWith { a, b ->
             val netA = calcNet(a)
             val netB = calcNet(b)
@@ -189,7 +191,7 @@ class Liquidator(
                 return@sortWith sortByPrice.compare(a.markets[0], b.markets[0])
             }
 
-            return@sortWith if (netA > netB) 1 else -1
+            return@sortWith if (netA < netB) 1 else -1
         }
 
         val exchangeRate = repo.getExchangeRate(market, storage.blockHeight)
@@ -221,8 +223,6 @@ class Liquidator(
                 }
             } else {
                 bestCandidate = a.candidate
-
-                break
             }
 
             i += 2
