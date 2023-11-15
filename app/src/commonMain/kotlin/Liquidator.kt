@@ -15,11 +15,13 @@ import types.*
 import utils.fetchAllPages
 
 const val PRICES_UPDATE_INTERVAL = 3 * 60 * 1000
-val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST")
+val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST", "AAVE")
+//"secret149e7c5j7w24pljg6em6zj2p557fuyhg8cnk7z8", // sLUNA Luna
+//"secret1w8d0ntrhrys4yzcfxnwprts7gfg5gfw86ccdpf", // sLUNA2 Luna
+//"secret1qem6e0gw2wfuzyr9sgthykvk0zjcrzm6lu94ym", // sUSTC  Terra
 
 class Liquidator(
     val repo: Repository,
-    private var markets: List<Market>,
     private var constants: LendConstants,
     var storage: Storage,
 //    private var manager: LiquidationsManager
@@ -53,27 +55,25 @@ class Liquidator(
                 )
             }, 30u, { x -> !BLACKLISTED_SYMBOLS.contains(x.symbol) })
 
-            val storage = Storage.init(repo, allMarkets.map { it.symbol }.toMutableSet())
-
             val assets = repo.fetchUnderlyingMulticallAssets(allMarkets)
-
-            val markets = mutableListOf<Market>()
-
-            allMarkets.forEachIndexed { i, market ->
-                val m = Market(
-                    contract = market.contract,
-                    symbol = market.symbol,
-                    decimals = market.decimals.toUInt(),
-                    underlying = assets[i]
+            val marketToMarketAndUnderlyingAsset = allMarkets.zip(assets).map { (lendOverseerMarket, underlyingAsset) ->
+                lendOverseerMarket to LendOverseerMarketAndUnderlyingAsset(
+                    contract = lendOverseerMarket.contract,
+                    symbol = lendOverseerMarket.symbol,
+                    decimals = lendOverseerMarket.decimals.toUInt(),
+                    ltvRatio = lendOverseerMarket.ltvRatio,
+                    underlying = underlyingAsset
                 )
-                markets.add(m)
-            }
+            }.toMap()
+
+            val storage = Storage.init(repo, marketToMarketAndUnderlyingAsset)
+
             val constants = LendConstants(
                 closeFactor = overseerConfig.close_factor.toBigDecimal(),
                 premium = overseerConfig.premium.toBigDecimal()
             )
             return Liquidator(
-                repo, markets, constants, storage
+                repo, constants, storage
             )
         }
     }
@@ -107,13 +107,13 @@ class Liquidator(
         return try {
             storage.updateBlockHeight()
 
-            val candidates = this.markets.map { x -> this.marketCandidate(x) }
+            val candidates = storage.markets.map { x -> this.marketCandidate(x) }
             val loans = mutableListOf<Loan>()
 
             candidates.forEachIndexed { i, candidate ->
                 if (candidate != null) {
                     loans.add(
-                        Loan(candidate, market = this.markets[i])
+                        Loan(candidate, market = storage.markets[i])
                     )
                 }
             }
@@ -135,14 +135,19 @@ class Liquidator(
         }
     }
 
-    private suspend fun marketCandidate(market: Market): Candidate? {
-        val candidates = fetchAllPages({ page -> repo.getBorrowers(market, page, storage.blockHeight) }, 1u, { x ->
+    private suspend fun marketCandidate(market: LendOverseerMarketAndUnderlyingAsset): Candidate? {
+        val candidates = fetchAllPages({ page ->
+            repo.getBorrowers(market, page, storage.blockHeight)
+        }, 1u, { x ->
             if (x.liquidity.shortfall == BigInteger.ZERO) return@fetchAllPages false
 
             x.markets = x.markets.filter { m -> !BLACKLISTED_SYMBOLS.contains(m.symbol) }
 
             return@fetchAllPages x.markets.isNotEmpty()
-        }).toMutableList()
+        }).map {
+            it.toLendMarketBorrower(storage)
+        }.toMutableList()
+
 
         if (candidates.isEmpty()) {
             logger.i("No liquidatable loans currently in ${market.contract.address}. Skipping...")
@@ -150,15 +155,15 @@ class Liquidator(
             return null
         }
 
-        return repo.findBestCandidate(market, candidates)
+        return findBestCandidate(market, candidates)
     }
 
-    private suspend fun Repository.findBestCandidate(
-        market: Market, borrowers: MutableList<LendMarketBorrower>
+    private suspend fun findBestCandidate(
+        market: LendOverseerMarketAndUnderlyingAsset, borrowers: MutableList<LendMarketBorrower>
     ): Candidate? {
-        val sortByPrice: Comparator<LendOverseerMarket> = Comparator { a, b ->
-            val priceA = storage.prices[a.symbol]!!
-            val priceB = storage.prices[b.symbol]!!
+        val sortByPrice: Comparator<LendOverseerMarketAndUnderlyingAsset> = Comparator { a, b ->
+            val priceA = storage.underlyingAssetToPrice[a.underlyingAssetId]!!
+            val priceB = storage.underlyingAssetToPrice[a.underlyingAssetId]!!
             if (priceA == priceB) {
                 return@Comparator 0
             }
@@ -169,8 +174,9 @@ class Liquidator(
         val calcNet = { borrower: LendMarketBorrower ->
             val payable = maxPayable(borrower)
 
-            (payable * constants.premium * storage.prices[borrower.markets[0].symbol]!!).divide(
-                storage.prices[market.symbol]!!, DecimalMode(15, RoundingMode.ROUND_HALF_CEILING)
+            (payable * constants.premium * storage.underlyingAssetToPrice[borrower.markets[0].underlyingAssetId]!!).divide(
+                storage.underlyingAssetToPrice[market.underlyingAssetId]!!,
+                DecimalMode(15, RoundingMode.ROUND_HALF_CEILING)
             )
         }
 
@@ -231,7 +237,7 @@ class Liquidator(
     )
 
     private suspend fun processCandidate(
-        market: Market, borrower: LendMarketBorrower, exchange_rate: BigDecimal
+        market: LendOverseerMarketAndUnderlyingAsset, borrower: LendMarketBorrower, exchange_rate: BigDecimal
     ): ProcessCandidateResult {
         val payable = maxPayable(borrower)
 
@@ -266,7 +272,7 @@ class Liquidator(
                     candidate = Candidate(
                         id = borrower.id,
                         payable = payable,
-                        seizable_usd = this.storage.usd_value(seizable, m.symbol, m.decimals),
+                        seizable_usd = this.storage.usdValue(seizable, m.underlyingAssetId, m.decimals),
                         market_info = m
                     ),
                 )
@@ -280,7 +286,7 @@ class Liquidator(
 
             if (info.shortfall == BigInteger.ZERO) {
                 actual_payable = payable
-                actual_seizable_usd = this.storage.usd_value(seizable, m.symbol, m.decimals)
+                actual_seizable_usd = this.storage.usdValue(seizable, m.underlyingAssetId, m.decimals)
 
                 // We don't have to check further since this is the second best scenario that we've got.
                 done = true
@@ -294,13 +300,14 @@ class Liquidator(
                     actual_seizable_usd = BigDecimal.ZERO
                 } else {
                     val seizable_price =
-                        BigDecimal.fromBigInteger(actual_seizable) * storage.prices[m.symbol]!! * exchange_rate
-                    val borrowed_premium = this.constants.premium * this.storage.prices[market.symbol]!!
+                        BigDecimal.fromBigInteger(actual_seizable) * storage.underlyingAssetToPrice[m.underlyingAssetId]!! * exchange_rate
+                    val borrowed_premium =
+                        constants.premium * storage.underlyingAssetToPrice[market.underlyingAssetId]!!
 
                     actual_payable = seizable_price / borrowed_premium
 
                     actual_seizable_usd =
-                        this.storage.usd_value(BigDecimal.fromBigInteger(actual_seizable), m.symbol, m.decimals)
+                        storage.usdValue(BigDecimal.fromBigInteger(actual_seizable), m.underlyingAssetId, m.decimals)
                 }
             }
 
@@ -330,7 +337,7 @@ class Liquidator(
     }
 
     private fun liquidationCostUsd(): BigDecimal {
-        return storage.gas_cost_usd(repo.config.gasCosts.liquidate.toBigDecimal())
+        return storage.gasCostUsd(repo.config.gasCosts.liquidate.toBigDecimal())
     }
 
 }

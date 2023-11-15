@@ -10,9 +10,9 @@ import kotlinx.serialization.encodeToString
 import msg.market.LendSimulatedLiquidation
 import msg.market.QueryMsg
 import types.LendMarketBorrower
-import types.Market
+import types.LendOverseerMarketAndUnderlyingAsset
 
-suspend fun Repository.getExchangeRate(market: Market, blockHeight: BigInteger): BigDecimal {
+suspend fun Repository.getExchangeRate(market: LendOverseerMarketAndUnderlyingAsset, blockHeight: BigInteger): BigDecimal {
     return json.decodeFromString<String>(
         client.queryContractSmart(
             contractAddress = market.contract.address,
@@ -24,7 +24,7 @@ suspend fun Repository.getExchangeRate(market: Market, blockHeight: BigInteger):
 
 
 suspend fun Repository.simulateLiquidation(
-    market: Market,
+    market: LendOverseerMarketAndUnderlyingAsset,
     lendMarketBorrower: LendMarketBorrower,
     blockHeight: BigInteger,
     payable: BigDecimal,

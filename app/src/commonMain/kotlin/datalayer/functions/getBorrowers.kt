@@ -4,15 +4,15 @@ import Repository
 import com.ionspin.kotlin.bignum.integer.BigInteger
 import json
 import kotlinx.serialization.encodeToString
+import msg.market.LendMarketBorrowerAnswer
 import msg.market.QueryMsg
 import msg.overseer.PaginatedResponse
 import msg.overseer.Pagination
-import types.LendMarketBorrower
-import types.Market
+import types.LendOverseerMarketAndUnderlyingAsset
 
 suspend fun Repository.getBorrowers(
-    market: Market, page: Pagination, blockHeight: BigInteger
-): PaginatedResponse<LendMarketBorrower>? {
+    market: LendOverseerMarketAndUnderlyingAsset, page: Pagination, blockHeight: BigInteger
+): PaginatedResponse<LendMarketBorrowerAnswer>? {
     return try {
         json.decodeFromString(
             client.queryContractSmart(

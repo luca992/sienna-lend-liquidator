@@ -21,7 +21,7 @@ data class LendOverseerMarket(
      * that the oracle expects, not what the actual token has in its storage. */
     val symbol: String,
     /** The decimals that the market has. Corresponds to the decimals of the underlying token. */
-    val decimals: Int,
+    val decimals: UInt,
     /** The percentage rate at which tokens can be borrowed given the size of the collateral. */
     val ltvRatio: String,
 )
