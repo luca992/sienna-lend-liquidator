@@ -161,15 +161,16 @@ class Liquidator(
     private suspend fun findBestCandidate(
         market: LendOverseerMarketAndUnderlyingAsset, borrowers: MutableList<LendMarketBorrower>
     ): Candidate? {
+        // sorts the markets for each borrower by price in descending order (largest price first)
         val sortByPrice: Comparator<LendOverseerMarketAndUnderlyingAsset> = Comparator { a, b ->
             val priceA = storage.underlyingAssetToPrice[a.underlyingAssetId]!!
-            val priceB = storage.underlyingAssetToPrice[a.underlyingAssetId]!!
+            val priceB = storage.underlyingAssetToPrice[b.underlyingAssetId]!!
             if (priceA == priceB) {
                 return@Comparator 0
             }
-            return@Comparator if (priceA > priceB) 1 else -1
+            return@Comparator if (priceA < priceB) 1 else -1
         }
-        borrowers.forEach { x -> x.markets.sortedWith(sortByPrice) }
+        borrowers.forEach { x -> x.markets.sortWith(sortByPrice) }
 
         val calcNet = { borrower: LendMarketBorrower ->
             val payable = maxPayable(borrower)

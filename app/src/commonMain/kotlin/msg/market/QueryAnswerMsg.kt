@@ -32,7 +32,7 @@ data class LendMarketBorrowerAnswer(
             principalBalance = principalBalance,
             actualBalance = actualBalance,
             liquidity = liquidity,
-            markets = markets.map { market -> storage.marketToMarketAndUnderlyingAsset[market]!! }
+            markets = markets.map { market -> storage.marketToMarketAndUnderlyingAsset[market]!! }.toMutableList()
         )
     }
 }

@@ -37,7 +37,7 @@ data class LendMarketBorrower(
     /** Current borrow balance. */
     val actualBalance: BigInteger,
     val liquidity: LendAccountLiquidity,
-    var markets: List<LendOverseerMarketAndUnderlyingAsset>
+    var markets: MutableList<LendOverseerMarketAndUnderlyingAsset>
 )
 
 data class Loan(
