@@ -274,7 +274,7 @@ class Liquidator(
 
             // Values are in sl-tokens so we need to convert to
             // the underlying in order for them to be useful here.
-            val info = repo.simulateLiquidation(market, borrower, storage.blockHeight, payable)
+            val info = repo.simulateLiquidation(market, borrower.id, m, storage.blockHeight, payable)
 
             val seizable = BigDecimal.fromBigInteger(info.seize_amount).times(exchange_rate)
 

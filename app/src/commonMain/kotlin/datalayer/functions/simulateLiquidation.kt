@@ -13,11 +13,9 @@ import io.eqoty.secretk.types.response.TxResponseData
 import io.ktor.util.*
 import json
 import kotlinx.serialization.encodeToString
-import logger
 import msg.market.ExecuteMsg
 import msg.market.LendSimulatedLiquidation
 import msg.market.QueryMsg
-import types.LendMarketBorrower
 import types.LendOverseerMarketAndUnderlyingAsset
 import types.Loan
 
@@ -42,7 +40,8 @@ fun BigDecimal.toFixed(decimalPlaces: Long, roundingMode: RoundingMode = Roundin
 
 suspend fun Repository.simulateLiquidation(
     market: LendOverseerMarketAndUnderlyingAsset,
-    lendMarketBorrower: LendMarketBorrower,
+    borrowerId: String,
+    borrowersCollateralMarket: LendOverseerMarketAndUnderlyingAsset,
     blockHeight: BigInteger,
     payable: BigDecimal,
 ): LendSimulatedLiquidation {
@@ -54,8 +53,8 @@ suspend fun Repository.simulateLiquidation(
                 QueryMsg(
                     simulateLiquidation = QueryMsg.SimulateLiquidation(
                         blockHeight.ulongValue(),
-                        borrower = lendMarketBorrower.id,
-                        collateral = market.contract.address,
+                        borrower = borrowerId,
+                        collateral = borrowersCollateralMarket.contract.address,
                         amount = payable.toFixed(0)
                     )
                 )
@@ -71,7 +70,7 @@ suspend fun Repository.liquidate(
         ExecuteMsg(
             liquidate = ExecuteMsg.Liquidate(
                 borrower = loan.candidate.id,
-                collateral = loan.market.contract.address
+                collateral = loan.candidate.marketInfo.contract.address
             )
         )
     ).encodeBase64()
