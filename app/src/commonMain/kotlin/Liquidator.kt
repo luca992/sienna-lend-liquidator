@@ -344,7 +344,16 @@ class Liquidator(
 
 
     private fun maxPayable(borrower: LendMarketBorrower): BigDecimal {
-        return BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor
+        return BigDecimal.fromBigInteger(
+            clamp(
+                (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toFixed(0).toBigInteger(),
+                storage.userBalance
+            )
+        )
+    }
+
+    fun clamp(value: BigInteger, max: BigInteger): BigInteger {
+        return if (value > max) max else value
     }
 
     private fun liquidationCostUsd(): BigDecimal {
