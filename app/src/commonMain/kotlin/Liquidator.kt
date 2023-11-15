@@ -321,7 +321,7 @@ class Liquidator(
                     val borrowed_premium =
                         constants.premium * storage.underlyingAssetToPrice[market.underlyingAssetId]!!
 
-                    actual_payable = seizable_price / borrowed_premium
+                    actual_payable = seizable_price.divide(borrowed_premium, DecimalMode(15, RoundingMode.ROUND_HALF_CEILING))
 
                     actual_seizable_usd =
                         storage.usdValue(BigDecimal.fromBigInteger(actual_seizable), m.underlyingAssetId, m.decimals)
