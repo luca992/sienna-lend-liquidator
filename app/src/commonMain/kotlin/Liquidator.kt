@@ -212,7 +212,7 @@ class Liquidator(
 
             val b = processCandidate(market, borrowers[i + 1], exchangeRate)
 
-            if (b.candidate.seizable_usd > a.candidate.seizable_usd) {
+            if (b.candidate.seizableUsd > a.candidate.seizableUsd) {
                 bestCandidate = b.candidate
 
                 if (b.best_case) {
@@ -227,7 +227,7 @@ class Liquidator(
             i += 2
         } while (i < borrowers.size)
 
-        if (bestCandidate != null && liquidationCostUsd() > bestCandidate.seizable_usd) return null
+        if (bestCandidate != null && liquidationCostUsd() > bestCandidate.seizableUsd) return null
 
         return bestCandidate
     }
@@ -241,6 +241,7 @@ class Liquidator(
     ): ProcessCandidateResult {
         val payable = maxPayable(borrower)
 
+        var bestSeizable = BigInteger.ZERO
         var bestSeizableUsd = BigDecimal.ZERO
         var bestPayable = BigDecimal.ZERO
         var marketIndex = 0
@@ -252,8 +253,9 @@ class Liquidator(
                     id = borrower.id,
                     payable = payable,
                     payableUsd = payable,
-                    seizable_usd = bestSeizableUsd,
-                    market_info = borrower.markets[marketIndex]
+                    seizable = bestSeizable,
+                    seizableUsd = bestSeizableUsd,
+                    marketInfo = borrower.markets[marketIndex]
                 ),
             )
         }
@@ -274,28 +276,31 @@ class Liquidator(
                         id = borrower.id,
                         payable = payable,
                         payableUsd = storage.usdValue(payable, market.underlyingAssetId, market.decimals),
-                        seizable_usd = storage.usdValue(seizable, m.underlyingAssetId, m.decimals),
-                        market_info = m
+                        seizable = seizable.toBigInteger(),
+                        seizableUsd = storage.usdValue(seizable, m.underlyingAssetId, m.decimals),
+                        marketInfo = m
                     ),
                 )
             }
 
 
             val actual_payable: BigDecimal
+            val actual_seizable: BigInteger
             val actual_seizable_usd: BigDecimal
 
             var done = false
 
             if (info.shortfall == BigInteger.ZERO) {
                 actual_payable = payable
-                actual_seizable_usd = this.storage.usdValue(seizable, m.underlyingAssetId, m.decimals)
+                actual_seizable = seizable.toBigInteger()
+                actual_seizable_usd = storage.usdValue(seizable, m.underlyingAssetId, m.decimals)
 
                 // We don't have to check further since this is the second best scenario that we've got.
                 done = true
             } else {
                 // Otherwise check by how much we'd need to decrease our repay amount in order for the
                 // liquidation to be successful and also decrease the seized amount by that percentage.
-                val actual_seizable = info.seize_amount - info.shortfall
+                actual_seizable = info.seize_amount - info.shortfall
 
                 if (actual_seizable.isZero()) {
                     actual_payable = BigDecimal.ZERO
@@ -315,6 +320,7 @@ class Liquidator(
 
             if (actual_seizable_usd > bestSeizableUsd) {
                 bestPayable = actual_payable
+                bestSeizable = actual_seizable
                 bestSeizableUsd = actual_seizable_usd
                 marketIndex = i
 
@@ -328,8 +334,9 @@ class Liquidator(
                 id = borrower.id,
                 payable = bestPayable,
                 payableUsd = storage.usdValue(bestPayable, market.underlyingAssetId, market.decimals),
-                seizable_usd = bestSeizableUsd,
-                market_info = borrower.markets[marketIndex]
+                seizable = bestSeizable,
+                seizableUsd = bestSeizableUsd,
+                marketInfo = borrower.markets[marketIndex]
             ),
         )
     }

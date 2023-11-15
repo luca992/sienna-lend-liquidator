@@ -19,8 +19,9 @@ data class Candidate(
     val id: String,
     val payable: BigDecimal,
     val payableUsd: BigDecimal,
-    val seizable_usd: BigDecimal,
-    val market_info: LendOverseerMarketAndUnderlyingAsset
+    val seizable: BigInteger,
+    val seizableUsd: BigDecimal,
+    val marketInfo: LendOverseerMarketAndUnderlyingAsset
 )
 
 data class LendConstants(
