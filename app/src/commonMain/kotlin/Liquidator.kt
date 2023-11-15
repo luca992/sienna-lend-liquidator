@@ -3,10 +3,8 @@ import com.ionspin.kotlin.bignum.decimal.DecimalMode
 import com.ionspin.kotlin.bignum.decimal.RoundingMode
 import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import com.ionspin.kotlin.bignum.integer.BigInteger
-import datalayer.functions.fetchUnderlyingMulticallAssets
-import datalayer.functions.getBorrowers
-import datalayer.functions.getExchangeRate
-import datalayer.functions.simulateLiquidation
+import com.ionspin.kotlin.bignum.integer.toBigInteger
+import datalayer.functions.*
 import kotlinx.serialization.encodeToString
 import msg.overseer.LendOverseerConfig
 import msg.overseer.LendOverseerMarket
@@ -16,9 +14,11 @@ import utils.fetchAllPages
 
 const val PRICES_UPDATE_INTERVAL = 3 * 60 * 1000
 val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST", "AAVE")
+
 //"secret149e7c5j7w24pljg6em6zj2p557fuyhg8cnk7z8", // sLUNA Luna
 //"secret1w8d0ntrhrys4yzcfxnwprts7gfg5gfw86ccdpf", // sLUNA2 Luna
 //"secret1qem6e0gw2wfuzyr9sgthykvk0zjcrzm6lu94ym", // sUSTC  Terra
+val ASSETS_TO_IGNORE_SEIZING: List<UnderlyingAssetId> = listOf(stkdScrtAssetId)
 
 class Liquidator(
     val repo: Repository,
@@ -60,7 +60,7 @@ class Liquidator(
                 lendOverseerMarket to LendOverseerMarketAndUnderlyingAsset(
                     contract = lendOverseerMarket.contract,
                     symbol = lendOverseerMarket.symbol,
-                    decimals = lendOverseerMarket.decimals.toUInt(),
+                    decimals = lendOverseerMarket.decimals,
                     ltvRatio = lendOverseerMarket.ltvRatio,
                     underlying = underlyingAsset
                 )
@@ -79,8 +79,8 @@ class Liquidator(
     }
 
 
-    suspend fun runOnce(): List<Loan> {
-        return this.runLiquidationsRound()
+    suspend fun runOnce(specificMarket: UnderlyingAssetId? = null): List<Loan> {
+        return this.runLiquidationsRound(specificMarket)
     }
 
     fun stop() {
@@ -90,7 +90,7 @@ class Liquidator(
 //        }
     }
 
-    private suspend fun runLiquidationsRound(): List<Loan> {
+    private suspend fun runLiquidationsRound(specificMarket: UnderlyingAssetId?): List<Loan> {
         if (isExecuting) {
             return emptyList()
         }
@@ -107,13 +107,18 @@ class Liquidator(
         return try {
             storage.updateBlockHeight()
 
-            val candidates = storage.markets.map { x -> this.marketCandidate(x) }
+            val chosenMarkets = if (specificMarket != null) {
+                storage.markets.filter { x -> x.underlyingAssetId == specificMarket }
+            } else {
+                storage.markets
+            }
+            val candidates = chosenMarkets.map { x -> marketCandidate(x) }
             val loans = mutableListOf<Loan>()
 
             candidates.forEachIndexed { i, candidate ->
                 if (candidate != null) {
                     loans.add(
-                        Loan(candidate, market = storage.markets[i])
+                        Loan(candidate, market = chosenMarkets[i])
                     )
                 }
             }
@@ -141,7 +146,10 @@ class Liquidator(
         }, 1u, { x ->
             if (x.liquidity.shortfall == BigInteger.ZERO) return@fetchAllPages false
 
-            x.markets = x.markets.filter { m -> !BLACKLISTED_SYMBOLS.contains(m.symbol) }
+            x.markets = x.markets.filter { m ->
+                val cachedMarketId = storage.marketToMarketAndUnderlyingAsset[m]?.underlyingAssetId
+                !BLACKLISTED_SYMBOLS.contains(m.symbol) && !ASSETS_TO_IGNORE_SEIZING.contains(cachedMarketId)
+            }
 
             return@fetchAllPages x.markets.isNotEmpty()
         }).map {
@@ -360,5 +368,15 @@ class Liquidator(
         return storage.gasCostUsd(repo.config.gasCosts.liquidate.toBigDecimal())
     }
 
+
+    suspend fun liquidate(loan: Loan) {
+        logger.i("Attempting to liquate loan: ${loan.candidate.id}")
+        val response = repo.liquidate(loan)
+        val repaidAmount = loan.candidate.payable.toPlainString()
+        logger.i("Successfully liquidated a loan by repaying $repaidAmount ${loan.market.symbol} and seized ~$${loan.candidate.seizableUsd} worth of ${loan.candidate.marketInfo.symbol} (transfered to market: ${loan.candidate.marketInfo.contract.address})!")
+        logger.i("TX hash: ${response.txhash}")
+
+        storage.updateUserBalance()
+    }
 }
 

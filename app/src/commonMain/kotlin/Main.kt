@@ -1,6 +1,7 @@
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,6 +18,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
 import types.Config
 import types.Loan
+import types.stkdScrtAssetId
 
 val logger = Logger.withTag("liquidator")
 val json = Json {
@@ -41,18 +43,13 @@ fun Repository.App() {
     val coroutineScope = rememberCoroutineScope()
     var loans by remember { mutableStateOf<List<Loan>>(listOf()) }
     MaterialTheme {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text("Liquidator")
-                    },
-                    actions = {
-                        Text("Balance: ${balance} $userBalanceTokenLabel")
-                    }
-                )
-            }
-        ) { innerPadding ->
+        Scaffold(topBar = {
+            TopAppBar(title = {
+                Text("Liquidator")
+            }, actions = {
+                Text("Balance: ${balance} $userBalanceTokenLabel")
+            })
+        }) { innerPadding ->
             Column(
                 modifier = Modifier.padding(innerPadding).fillMaxSize()
             ) {
@@ -63,7 +60,7 @@ fun Repository.App() {
                     } else {
                         buttonText = "Working..."
                         coroutineScope.launch {
-                            loans = liquidator!!.runOnce()
+                            loans = liquidator!!.runOnce(stkdScrtAssetId)
                             buttonText = "Query for loans to liquidate!"
                         }
                     }
@@ -73,7 +70,9 @@ fun Repository.App() {
                 }
                 LazyColumn {
                     items(loans) { loan ->
-                        LoanCard(loan, client)
+                        LoanCard(loan, client) {
+                            liquidator?.liquidate(loan)
+                        }
                     }
                 }
             }
@@ -82,9 +81,20 @@ fun Repository.App() {
 }
 
 @Composable
-fun LoanCard(loan: Loan, client: SigningCosmWasmClient) {
+fun LoanCard(loan: Loan, client: SigningCosmWasmClient, onClickLiquidate: suspend () -> Unit) {
     val coroutineScope = rememberCoroutineScope()
-    var underlyingCollateralsLabel by remember { mutableStateOf("") }
+    var lendMarketsUnderlyingCollateralsLabel by remember { mutableStateOf("") }
+    var seizableCollateralsUnderlyingLabel by remember { mutableStateOf("") }
+    coroutineScope.launch {
+        client.getLabelByContractAddr(loan.market.underlying.address).let {
+            lendMarketsUnderlyingCollateralsLabel = it
+        }
+    }
+    coroutineScope.launch {
+        client.getLabelByContractAddr(loan.candidate.marketInfo.underlying.address).let {
+            seizableCollateralsUnderlyingLabel = it
+        }
+    }
     Card(
         modifier = Modifier.fillMaxWidth().padding(8.dp),
     ) {
@@ -93,27 +103,57 @@ fun LoanCard(loan: Loan, client: SigningCosmWasmClient) {
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
+                    "Lend Market Symbol: ${loan.market.symbol}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    "Lend Market's underlying asset contract:",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    loan.market.underlying.address,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    "Lend Market's underlying asset contract label:",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    lendMarketsUnderlyingCollateralsLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text("Loan Info:", fontWeight = FontWeight.Medium)
+                Text(
                     text = "Candidate ID: ${loan.candidate.id}",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("LendOverseerMarket: ${loan.candidate.marketInfo.symbol}", fontWeight = FontWeight.Medium)
-                Text("LTV Ratio: ${loan.candidate.marketInfo.ltvRatio}")
+
+                Text("Amount Owed (Payable): ${loan.candidate.payable.toPlainString()} $lendMarketsUnderlyingCollateralsLabel")
+                Text("USD Value Of Payable: ${loan.candidate.payableUsd.toPlainString()}")
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Payable: ${loan.candidate.payable.toPlainString()}")
-                Text("Payable USD Value: ${loan.candidate.payableUsd.toPlainString()}")
-                Text("Seizable Collateral: ${loan.candidate.seizable.toString()}")
-                Text("Seizable Collateral USD Value: ${loan.candidate.seizableUsd.toPlainString()}")
+
+                Text("Amount of Seizable Collateral: ${loan.candidate.seizable} $seizableCollateralsUnderlyingLabel")
+                Text("Seizable Collateral's USD Value: ${loan.candidate.seizableUsd.toPlainString()}")
+                Text(
+                    "Seizable Collateral's Symbol: ${loan.candidate.marketInfo.symbol}", fontWeight = FontWeight.Medium
+                )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Collateral's Market Symbol: ${loan.market.symbol}")
-                Text("Collateral's Underlying Contract Label: $underlyingCollateralsLabel")
-                coroutineScope.launch {
-                    client.getLabelByContractAddr(loan.market.underlying.address).let {
-                        underlyingCollateralsLabel = it
+                DisableSelection {
+                    Button(onClick = {
+                        coroutineScope.launch {
+                            onClickLiquidate()
+                        }
+                    }) {
+                        Text("Liquidate")
                     }
                 }
-                Text("Collateral's Underlying Contract Address: ${loan.market.underlying.address}")
             }
         }
     }

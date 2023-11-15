@@ -47,25 +47,28 @@ data class Loan(
 
 data class UnderlyingAssetId(
     val underlyingAssetAddress: String,
-    val symbol: String = SiennaLendSymbol.addressToSymbol(underlyingAssetAddress).symbol,
+    val symbol: String = addressToUnderlyingAssetId(underlyingAssetAddress).symbol,
 )
 
-enum class SiennaLendSymbol(val symbol: String) {
-    SSCRT("SCRT"), STKD_SCRT("SCRT");
+const val scrtVariantSymbol = "SCRT"
+val sscrtAssetId = UnderlyingAssetId("secret1k0jntykt7e4g3y88ltc60czgjuqdy4c9e8fzek", "SCRT")
+val stkdScrtAssetId = UnderlyingAssetId("secret1k6u0cy4feepm6pehnz804zmwakuwdapm69tuc4", "SCRT")
+val seScrtAssetId = UnderlyingAssetId("secret16zfat8th6hvzhesj8f6rz3vzd7ll69ys580p2t", "SCRT")
 
-    companion object {
-        fun addressToSymbol(address: String): SiennaLendSymbol {
-            return when (address) {
-                "secret1k0jntykt7e4g3y88ltc60czgjuqdy4c9e8fzek" -> SiennaLendSymbol.SSCRT
-                "secret1k6u0cy4feepm6pehnz804zmwakuwdapm69tuc4" -> SiennaLendSymbol.STKD_SCRT
-                else -> throw Exception("Unknown address $address, cannot map to symbol")
-            }
-        }
+
+
+fun addressToUnderlyingAssetId(address: String): UnderlyingAssetId {
+    val symbol = when (address) {
+        sscrtAssetId.underlyingAssetAddress -> scrtVariantSymbol
+        stkdScrtAssetId.underlyingAssetAddress -> scrtVariantSymbol
+        seScrtAssetId.underlyingAssetAddress -> scrtVariantSymbol
+        else -> throw Exception("Unknown address $address, cannot map to symbol")
     }
+    return UnderlyingAssetId(address, symbol)
 }
 
 
-fun symbolToContractAddr(symbol: String): UnderlyingAssetId {
+fun symbolToAssetId(symbol: String): UnderlyingAssetId {
     val underlyingAssetAddress = when (symbol) {
         "OSMO" -> "secret1zwwealwm0pcl9cul4nt6f38dsy6vzplw8lp3qg"
         "MANA" -> "secret178t2cp33hrtlthphmt9lpd25qet349mg4kcega"

@@ -11,10 +11,9 @@ import kotlinx.serialization.encodeToString
 import msg.overseer.LendOverseerMarket
 import types.LendOverseerMarketAndUnderlyingAsset
 import types.UnderlyingAssetId
-import types.symbolToContractAddr
+import types.sscrtAssetId
+import types.symbolToAssetId
 import utils.normalizeDenom
-
-val sscrtAssetId = UnderlyingAssetId("secret1k0jntykt7e4g3y88ltc60czgjuqdy4c9e8fzek")
 
 class Storage private constructor(
     val repository: Repository,
@@ -120,10 +119,10 @@ class Storage private constructor(
         )
         prices.priceResults.forEach { x ->
             val price = (x.px.toDouble().toBigDecimal() / x.multiplier.toDouble().toBigDecimal())
-            require(underlyingAssetToPrice.contains(symbolToContractAddr(x.symbol))) {
+            require(underlyingAssetToPrice.contains(symbolToAssetId(x.symbol))) {
                 "symbolToContractAddr has an outdated contract address. Updated ${x.symbol}'s address"
             }
-            underlyingAssetToPrice[symbolToContractAddr(x.symbol)] = price
+            underlyingAssetToPrice[symbolToAssetId(x.symbol)] = price
         }
         println(underlyingAssetToPrice)
     }
