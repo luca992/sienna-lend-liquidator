@@ -95,7 +95,7 @@ class Liquidator(
         if (isExecuting) {
             return emptyList()
         }
-
+        storage.updateUserBalance()
         if (this.storage.userBalance.value.isZero()) {
             logger.i("Ran out of balance. Terminating...")
             this.stop()
@@ -262,6 +262,7 @@ class Liquidator(
                 best_case = true,
                 candidate = Candidate(
                     id = borrower.id,
+                    totalPayable = (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toBigInteger(),
                     payable = payable,
                     payableUsd = payable,
                     seizable = bestSeizable,
@@ -289,7 +290,8 @@ class Liquidator(
                         payableUsd = storage.usdValue(payable, market.underlyingAssetId, market.decimals),
                         seizable = seizable.toBigInteger(),
                         seizableUsd = storage.usdValue(seizable, m.underlyingAssetId, m.decimals),
-                        marketInfo = m
+                        marketInfo = m,
+                        totalPayable = (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toBigInteger()
                     ),
                 )
             }
@@ -348,7 +350,8 @@ class Liquidator(
                 payableUsd = storage.usdValue(bestPayable, market.underlyingAssetId, market.decimals),
                 seizable = bestSeizable,
                 seizableUsd = bestSeizableUsd,
-                marketInfo = borrower.markets[marketIndex]
+                marketInfo = borrower.markets[marketIndex],
+                totalPayable = (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toBigInteger()
             ),
         )
     }
