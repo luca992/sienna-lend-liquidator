@@ -29,7 +29,7 @@ val json = Json {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Repository.App(liquidator: Liquidator) {
-    var buttonText by remember { mutableStateOf("Queryfor loans to liquidate!") }
+    var buttonText by remember { mutableStateOf("Query for loans to liquidate!") }
     var userBalanceTokenLabel by remember { mutableStateOf("") }
     val balance by liquidator.storage.userBalance.collectAsState()
 
@@ -128,9 +128,9 @@ fun LoanCard(loan: Loan, client: SigningCosmWasmClient, onClickLiquidate: suspen
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-
-                Text("Amount Owed (Payable): ${loan.candidate.payable.toPlainString()} $lendMarketsUnderlyingCollateralsLabel")
-                Text("USD Value Of Payable: ${loan.candidate.payableUsd.toPlainString()}")
+                Text("Total Amount Owed (Payable): ${loan.candidate.totalPayable} $lendMarketsUnderlyingCollateralsLabel")
+                Text("Clamped Amount Owed (Payable): ${loan.candidate.payable.toPlainString()} $lendMarketsUnderlyingCollateralsLabel")
+                Text("Clamped USD Value Of Payable: ${loan.candidate.payableUsd.toPlainString()}")
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text("Amount of Seizable Collateral: ${loan.candidate.seizable} $seizableCollateralsUnderlyingLabel")
