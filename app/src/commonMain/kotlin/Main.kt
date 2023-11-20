@@ -28,15 +28,13 @@ val json = Json {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Repository.App() {
-    var buttonText by remember { mutableStateOf("Liquidator is not initialized!") }
-    var liquidator by remember { mutableStateOf<Liquidator?>(null) }
+fun Repository.App(liquidator: Liquidator) {
+    var buttonText by remember { mutableStateOf("Queryfor loans to liquidate!") }
     var userBalanceTokenLabel by remember { mutableStateOf("") }
-    val balance by remember { derivedStateOf { liquidator?.storage?.userBalance } }
+    val balance by liquidator.storage.userBalance.collectAsState()
+
     LaunchedEffect(Unit) {
-        liquidator = Liquidator.create(this@App)
-        buttonText = "Query for loans to liquidate!"
-        client.getLabelByContractAddr(liquidator!!.storage.repository.config.token.address).let {
+        client.getLabelByContractAddr(liquidator.storage.repository.config.token.address).let {
             userBalanceTokenLabel = it
         }
     }
@@ -47,22 +45,17 @@ fun Repository.App() {
             TopAppBar(title = {
                 Text("Liquidator")
             }, actions = {
-                Text("Balance: ${balance} $userBalanceTokenLabel")
+                Text("Balance: $balance $userBalanceTokenLabel")
             })
         }) { innerPadding ->
             Column(
                 modifier = Modifier.padding(innerPadding).fillMaxSize()
             ) {
                 Button(onClick = {
-                    if (liquidator == null) {
-                        buttonText = "Liquidator is not initialized!"
-                        return@Button
-                    } else {
-                        buttonText = "Working..."
-                        coroutineScope.launch {
-                            loans = liquidator!!.runOnce(stkdScrtAssetId)
-                            buttonText = "Query for loans to liquidate!"
-                        }
+                    buttonText = "Working..."
+                    coroutineScope.launch {
+                        loans = liquidator.runOnce(stkdScrtAssetId)
+                        buttonText = "Query for loans to liquidate!"
                     }
 
                 }) {
@@ -71,7 +64,8 @@ fun Repository.App() {
                 LazyColumn {
                     items(loans) { loan ->
                         LoanCard(loan, client) {
-                            liquidator?.liquidate(loan)
+                            liquidator.liquidate(loan)
+
                         }
                     }
                 }

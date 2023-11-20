@@ -18,7 +18,8 @@ val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST", "AAVE")
 //"secret149e7c5j7w24pljg6em6zj2p557fuyhg8cnk7z8", // sLUNA Luna
 //"secret1w8d0ntrhrys4yzcfxnwprts7gfg5gfw86ccdpf", // sLUNA2 Luna
 //"secret1qem6e0gw2wfuzyr9sgthykvk0zjcrzm6lu94ym", // sUSTC  Terra
-val ASSETS_TO_IGNORE_SEIZING: List<UnderlyingAssetId> = listOf(stkdScrtAssetId, symbolToAssetId("USDT"))
+val ASSETS_TO_IGNORE_SEIZING: List<UnderlyingAssetId> =
+    listOf(stkdScrtAssetId, symbolToAssetId("USDT"), /* symbolToAssetId("USDC")*/)
 
 class Liquidator(
     val repo: Repository,
@@ -95,7 +96,7 @@ class Liquidator(
             return emptyList()
         }
 
-        if (this.storage.userBalance.isZero()) {
+        if (this.storage.userBalance.value.isZero()) {
             logger.i("Ran out of balance. Terminating...")
             this.stop()
 
@@ -321,7 +322,8 @@ class Liquidator(
                     val borrowed_premium =
                         constants.premium * storage.underlyingAssetToPrice[market.underlyingAssetId]!!
 
-                    actual_payable = seizable_price.divide(borrowed_premium, DecimalMode(15, RoundingMode.ROUND_HALF_CEILING))
+                    actual_payable =
+                        seizable_price.divide(borrowed_premium, DecimalMode(15, RoundingMode.ROUND_HALF_CEILING))
 
                     actual_seizable_usd =
                         storage.usdValue(BigDecimal.fromBigInteger(actual_seizable), m.underlyingAssetId, m.decimals)
@@ -356,13 +358,17 @@ class Liquidator(
         return BigDecimal.fromBigInteger(
             clamp(
                 (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toFixed(0).toBigInteger(),
-                storage.userBalance
+                storage.userBalance.value
             )
         )
     }
 
     private fun clamp(value: BigInteger, max: BigInteger): BigInteger {
-        return if (value > max) max else value
+        return if (value > max) {
+            max
+        } else {
+            value
+        }
     }
 
     private fun liquidationCostUsd(): BigDecimal {
@@ -372,6 +378,18 @@ class Liquidator(
 
     suspend fun liquidate(loan: Loan) {
         logger.i("Attempting to liquate loan: ${loan.candidate.id}")
+        val simulatedLiquidation = repo.simulateLiquidation(
+            loan.market,
+            loan.candidate.id,
+            loan.candidate.marketInfo,
+            storage.blockHeight,
+            loan.candidate.payable
+        )
+        logger.i("Simulated liquidation: $simulatedLiquidation")
+        if (simulatedLiquidation.shortfall != BigInteger.ZERO) {
+            logger.i("Failed to simulate liquidate loan: ${loan.candidate.id}. Shortfall not zero: ${simulatedLiquidation.shortfall}")
+            return
+        }
         val response = repo.liquidate(loan)
         val repaidAmount = loan.candidate.payable.toPlainString()
         logger.i("Successfully liquidated a loan by repaying $repaidAmount ${loan.market.symbol} and seized ~$${loan.candidate.seizableUsd} worth of ${loan.candidate.marketInfo.symbol} (transfered to market: ${loan.candidate.marketInfo.contract.address})!")

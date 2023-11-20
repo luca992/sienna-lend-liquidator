@@ -1,3 +1,4 @@
+import androidx.compose.runtime.mutableStateOf
 import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import com.ionspin.kotlin.bignum.integer.BigInteger
@@ -6,6 +7,10 @@ import datalayer.response.PriceResults
 import io.eqoty.secret.std.contract.msg.Snip20Msgs
 import io.eqoty.secret.std.types.Permit
 import io.eqoty.secretk.client.Json
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import msg.overseer.LendOverseerMarket
@@ -26,7 +31,8 @@ class Storage private constructor(
         markets.map { UnderlyingAssetId(it.underlying.address, it.symbol) }.toMutableSet()
     val underlyingAssetToPrice = underlyingMarketAssetIds.associateWith { 0.0.toBigDecimal() }.toMutableMap()
     var blockHeight: BigInteger = 0.toBigInteger()
-    var userBalance = BigInteger.ZERO
+    var userBalance = MutableStateFlow(BigInteger.ZERO)
+
     val permits = mutableMapOf<String, Permit>()
 
     companion object {
@@ -146,6 +152,6 @@ class Storage private constructor(
             contract.address, query, contract.codeHash
         )
 
-        userBalance = Json.decodeFromString<Snip20Msgs.QueryAnswer>(response).balance!!.amount!!
+        userBalance.value = Json.decodeFromString<Snip20Msgs.QueryAnswer>(response).balance!!.amount!!
     }
 }
