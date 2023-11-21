@@ -13,23 +13,27 @@ import io.eqoty.secretk.types.response.TxResponseData
 import io.ktor.util.*
 import json
 import kotlinx.serialization.encodeToString
+import logger
 import msg.market.ExecuteMsg
 import msg.market.LendSimulatedLiquidation
 import msg.market.QueryMsg
 import types.LendOverseerMarketAndUnderlyingAsset
 import types.Loan
 
+val exchangeRateCache = mutableMapOf<Pair<LendOverseerMarketAndUnderlyingAsset, BigInteger>, BigDecimal>()
 suspend fun Repository.getExchangeRate(
     market: LendOverseerMarketAndUnderlyingAsset,
     blockHeight: BigInteger
 ): BigDecimal {
-    return json.decodeFromString<String>(
-        client.queryContractSmart(
-            contractAddress = market.contract.address,
-            contractCodeHash = market.contract.codeHash,
-            queryMsg = json.encodeToString(QueryMsg(exchangeRate = QueryMsg.ExchangeRate(blockHeight.ulongValue())))
-        )
-    ).toBigDecimal()
+    return exchangeRateCache.getOrPut(market to blockHeight) {
+        json.decodeFromString<String>(
+            client.queryContractSmart(
+                contractAddress = market.contract.address,
+                contractCodeHash = market.contract.codeHash,
+                queryMsg = json.encodeToString(QueryMsg(exchangeRate = QueryMsg.ExchangeRate(blockHeight.ulongValue())))
+            )
+        ).toBigDecimal()
+    }
 }
 
 fun BigDecimal.toFixed(decimalPlaces: Long, roundingMode: RoundingMode = RoundingMode.FLOOR): String {
@@ -45,6 +49,7 @@ suspend fun Repository.simulateLiquidation(
     blockHeight: BigInteger,
     payable: BigDecimal,
 ): LendSimulatedLiquidation {
+    logger.i("simulateLiquidation payable: $payable")
     return json.decodeFromString(
         client.queryContractSmart(
             contractAddress = market.contract.address,
