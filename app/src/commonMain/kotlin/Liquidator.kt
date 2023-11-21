@@ -327,7 +327,7 @@ class Liquidator(
 
 //                    actual_payable = seizable_price.divide(borrowed_premium, DecimalMode(15, RoundingMode.ROUND_HALF_CEILING))
 
-                    actual_payable = payable * (BigDecimal.fromBigInteger(info.seize_amount - info.shortfall).divide(
+                    actual_payable = (payable * BigDecimal.fromBigInteger(info.seize_amount - info.shortfall).divide(
                         BigDecimal.fromBigInteger(info.seize_amount),
                         DecimalMode(15, RoundingMode.FLOOR)
                     ))
