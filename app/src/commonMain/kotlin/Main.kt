@@ -16,9 +16,7 @@ import io.getenv
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
-import types.Config
-import types.Loan
-import types.stkdScrtAssetId
+import types.*
 
 val logger = Logger.withTag("liquidator")
 val json = Json {
