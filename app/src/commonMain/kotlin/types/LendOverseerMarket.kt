@@ -22,7 +22,8 @@ data class Candidate(
     val seizable: BigInteger,
     val seizableUsd: BigDecimal,
     val marketInfo: LendOverseerMarket,
-    val totalPayable: BigInteger
+    val totalPayable: BigInteger,
+    val clampedToWalletBalance: Boolean,
 )
 
 data class LendConstants(

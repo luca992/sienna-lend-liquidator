@@ -87,8 +87,7 @@ class Liquidator(
         if (isExecuting) {
             return
         }
-        repo.updateUserBalance(specificMarket?.let { listOf(it) }
-            ?: repo.runtimeCache.lendOverseerMarkets)
+        repo.updateUserBalance(specificMarket?.let { listOf(it) } ?: repo.runtimeCache.lendOverseerMarkets)
 
         isExecuting = true
 
@@ -191,7 +190,8 @@ class Liquidator(
             return@sortWith if (netA < netB) 1 else -1
         }
 
-        return borrowers.map { processCandidate(market, it, clampToWalletBalance).candidate }.filter { it.seizable > BigInteger.ZERO }
+        return borrowers.map { processCandidate(market, it, clampToWalletBalance).candidate }
+            .filter { it.seizable > BigInteger.ZERO }
 //        var bestCandidate: Candidate? = null
 //
 //        // Because we sort the borrowers based on the best case scenario
@@ -235,9 +235,9 @@ class Liquidator(
     )
 
     private suspend fun processCandidate(
-        market: LendOverseerMarket, borrower: LendMarketBorrower, clamp: Boolean
+        market: LendOverseerMarket, borrower: LendMarketBorrower, clampToWalletBalance: Boolean
     ): ProcessCandidateResult {
-        val payable = maxPayable(market, borrower, clamp)
+        val payable = maxPayable(market, borrower, clampToWalletBalance)
 
         var bestSeizable = BigInteger.ZERO
         var bestSeizableUsd = BigDecimal.ZERO
@@ -254,7 +254,8 @@ class Liquidator(
                     payableUsd = payable,
                     seizable = bestSeizable,
                     seizableUsd = bestSeizableUsd,
-                    marketInfo = borrower.markets[marketIndex]
+                    marketInfo = borrower.markets[marketIndex],
+                    clampedToWalletBalance = clampToWalletBalance
                 ),
             )
         }
@@ -279,7 +280,8 @@ class Liquidator(
                         seizable = seizable.toBigInteger(),
                         seizableUsd = repo.usdValue(seizable, m.underlyingAssetId, m.decimals),
                         marketInfo = m,
-                        totalPayable = (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toBigInteger()
+                        totalPayable = (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toBigInteger(),
+                        clampedToWalletBalance = clampToWalletBalance
                     ),
                 )
             }
@@ -341,7 +343,8 @@ class Liquidator(
                 seizable = bestSeizable,
                 seizableUsd = bestSeizableUsd,
                 marketInfo = borrower.markets[marketIndex],
-                totalPayable = (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toBigInteger()
+                totalPayable = (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toBigInteger(),
+                clampedToWalletBalance = clampToWalletBalance
             ),
         )
     }

@@ -163,8 +163,9 @@ fun LoanCard(loan: Loan, onClickLiquidate: suspend () -> Unit) {
                 val loanMarketUnderlyingAssetSnip20Symbol = loan.market.underlyingAssetId.snip20Symbol
                 val loanCollateralSnip20Symbol = loan.candidate.marketInfo.underlyingAssetId.snip20Symbol
                 Text("Total Amount Owed (Payable): ${loan.candidate.totalPayable} $loanMarketUnderlyingAssetSnip20Symbol")
-                Text("Clamped Amount Owed (Payable): ${loan.candidate.payable.toPlainString()} $loanMarketUnderlyingAssetSnip20Symbol")
-                Text("Clamped USD Value Of Payable: ${loan.candidate.payableUsd.toPlainString()}")
+                val clampedPrefix = if (loan.candidate.clampedToWalletBalance) "Clamped " else ""
+                Text(clampedPrefix + "Amount Owed (Payable): ${loan.candidate.payable.toPlainString()} $loanMarketUnderlyingAssetSnip20Symbol")
+                Text(clampedPrefix + "USD Value Of Payable: ${loan.candidate.payableUsd.toPlainString()}")
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text("Amount of Seizable Collateral: ${loan.candidate.seizable} $loanCollateralSnip20Symbol")
