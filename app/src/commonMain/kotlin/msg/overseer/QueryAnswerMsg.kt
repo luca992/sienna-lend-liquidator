@@ -15,7 +15,7 @@ data class LendOverseerConfig(
 )
 
 @Serializable
-data class LendOverseerMarket(
+data class LendOverseerMarketQueryAnswer(
     val contract: ContractInfo,
     /** The symbol of the underlying asset. Note that this is the same as the symbol
      * that the oracle expects, not what the actual token has in its storage. */

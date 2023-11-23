@@ -9,41 +9,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
-import com.ionspin.kotlin.bignum.serialization.kotlinx.biginteger.bigIntegerhumanReadableSerializerModule
+import com.ionspin.kotlin.bignum.integer.BigInteger
 import io.eqoty.secretk.client.SigningCosmWasmClient
 import io.eqoty.secretk.wallet.DirectSigningWallet
 import io.getenv
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNamingStrategy
-import types.*
+import types.Config
+import types.Loan
+import utils.json
 
 val logger = Logger.withTag("liquidator")
-val json = Json {
-    namingStrategy = JsonNamingStrategy.SnakeCase
-    serializersModule = bigIntegerhumanReadableSerializerModule
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Repository.App(liquidator: Liquidator) {
+fun App(viewModel: AppViewModel) {
     var buttonText by remember { mutableStateOf("Query for loans to liquidate!") }
-    var userBalanceTokenLabel by remember { mutableStateOf("") }
-    val balance by liquidator.storage.userBalance.collectAsState()
-
-    LaunchedEffect(Unit) {
-        client.getLabelByContractAddr(liquidator.storage.repository.config.token.address).let {
-            userBalanceTokenLabel = it
+    val balance by remember {
+        derivedStateOf {
+            viewModel.balance[viewModel.selectedLendMarket.underlyingAssetId] ?: BigInteger.ZERO
         }
     }
+    val loans by remember {
+        derivedStateOf {
+            viewModel.marketToLoans[viewModel.selectedLendMarket] ?: emptyList()
+        }
+    }
+
     val coroutineScope = rememberCoroutineScope()
-    var loans by remember { mutableStateOf<List<Loan>>(listOf()) }
+
     MaterialTheme {
         Scaffold(topBar = {
             TopAppBar(title = {
                 Text("Liquidator")
             }, actions = {
-                Text("Balance: $balance $userBalanceTokenLabel")
+                Text("Balance: $balance ${viewModel.selectedLendMarket.underlyingAssetId.snip20Symbol}")
             })
         }) { innerPadding ->
             Column(
@@ -52,7 +51,7 @@ fun Repository.App(liquidator: Liquidator) {
                 Button(onClick = {
                     buttonText = "Working..."
                     coroutineScope.launch {
-                        loans = liquidator.runOnce(stkdScrtAssetId)
+                        viewModel.getLoans()
                         buttonText = "Query for loans to liquidate!"
                     }
 
@@ -61,9 +60,8 @@ fun Repository.App(liquidator: Liquidator) {
                 }
                 LazyColumn {
                     items(loans) { loan ->
-                        LoanCard(loan, client) {
-                            liquidator.liquidate(loan)
-
+                        LoanCard(loan) {
+                            viewModel.liquidate(loan)
                         }
                     }
                 }
@@ -73,20 +71,8 @@ fun Repository.App(liquidator: Liquidator) {
 }
 
 @Composable
-fun LoanCard(loan: Loan, client: SigningCosmWasmClient, onClickLiquidate: suspend () -> Unit) {
+fun LoanCard(loan: Loan, onClickLiquidate: suspend () -> Unit) {
     val coroutineScope = rememberCoroutineScope()
-    var lendMarketsUnderlyingCollateralsLabel by remember { mutableStateOf("") }
-    var seizableCollateralsUnderlyingLabel by remember { mutableStateOf("") }
-    coroutineScope.launch {
-        client.getLabelByContractAddr(loan.market.underlying.address).let {
-            lendMarketsUnderlyingCollateralsLabel = it
-        }
-    }
-    coroutineScope.launch {
-        client.getLabelByContractAddr(loan.candidate.marketInfo.underlying.address).let {
-            seizableCollateralsUnderlyingLabel = it
-        }
-    }
     Card(
         modifier = Modifier.fillMaxWidth().padding(8.dp),
     ) {
@@ -114,7 +100,7 @@ fun LoanCard(loan: Loan, client: SigningCosmWasmClient, onClickLiquidate: suspen
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    lendMarketsUnderlyingCollateralsLabel,
+                    loan.market.underlyingAssetId.snip20Symbol,
                     style = MaterialTheme.typography.titleSmall,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -126,12 +112,14 @@ fun LoanCard(loan: Loan, client: SigningCosmWasmClient, onClickLiquidate: suspen
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Total Amount Owed (Payable): ${loan.candidate.totalPayable} $lendMarketsUnderlyingCollateralsLabel")
-                Text("Clamped Amount Owed (Payable): ${loan.candidate.payable.toPlainString()} $lendMarketsUnderlyingCollateralsLabel")
+                val loanCollateralSnip20Symbol =
+                    loan.candidate.marketInfo.underlyingAssetId.snip20Symbol
+                Text("Total Amount Owed (Payable): ${loan.candidate.totalPayable} $loanCollateralSnip20Symbol")
+                Text("Clamped Amount Owed (Payable): ${loan.candidate.payable.toPlainString()} $loanCollateralSnip20Symbol")
                 Text("Clamped USD Value Of Payable: ${loan.candidate.payableUsd.toPlainString()}")
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text("Amount of Seizable Collateral: ${loan.candidate.seizable} $seizableCollateralsUnderlyingLabel")
+                Text("Amount of Seizable Collateral: ${loan.candidate.seizable} $loanCollateralSnip20Symbol")
                 Text("Seizable Collateral's USD Value: ${loan.candidate.seizableUsd.toPlainString()}")
                 Text(
                     "Seizable Collateral's Symbol: ${loan.candidate.marketInfo.symbol}", fontWeight = FontWeight.Medium
@@ -150,6 +138,7 @@ fun LoanCard(loan: Loan, client: SigningCosmWasmClient, onClickLiquidate: suspen
         }
     }
 }
+
 
 
 fun getRepositoryWithDirectSigningWallet(): Repository {

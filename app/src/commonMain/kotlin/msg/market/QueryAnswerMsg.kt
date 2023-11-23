@@ -1,10 +1,10 @@
 package msg.market
 
-import Storage
+import datalayer.sources.cache.RuntimeCache
 import com.ionspin.kotlin.bignum.integer.BigInteger
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import msg.overseer.LendOverseerMarket
+import msg.overseer.LendOverseerMarketQueryAnswer
 import types.LendMarketBorrower
 
 
@@ -25,14 +25,14 @@ data class LendMarketBorrowerAnswer(
     /** Current borrow balance. */
     @Contextual val actualBalance: BigInteger,
     val liquidity: LendAccountLiquidity,
-    var markets: List<LendOverseerMarket>
+    var markets: List<LendOverseerMarketQueryAnswer>
 ) {
-    fun toLendMarketBorrower(storage: Storage): LendMarketBorrower {
+    fun toLendMarketBorrower(storage: RuntimeCache): LendMarketBorrower {
         return LendMarketBorrower(id = id,
             principalBalance = principalBalance,
             actualBalance = actualBalance,
             liquidity = liquidity,
-            markets = markets.map { market -> storage.marketToMarketAndUnderlyingAsset[market]!! }.toMutableList()
+            markets = markets.map { market -> storage.lendOverSeerMarketQueryAnswerToLendOverseerMarket[market]!! }.toMutableList()
         )
     }
 }

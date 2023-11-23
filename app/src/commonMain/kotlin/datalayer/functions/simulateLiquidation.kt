@@ -11,19 +11,18 @@ import io.eqoty.secretk.types.MsgExecuteContract
 import io.eqoty.secretk.types.TxOptions
 import io.eqoty.secretk.types.response.TxResponseData
 import io.ktor.util.*
-import json
 import kotlinx.serialization.encodeToString
 import logger
 import msg.market.ExecuteMsg
 import msg.market.LendSimulatedLiquidation
 import msg.market.QueryMsg
-import types.LendOverseerMarketAndUnderlyingAsset
+import types.LendOverseerMarket
 import types.Loan
+import utils.json
 
-val exchangeRateCache = mutableMapOf<Pair<LendOverseerMarketAndUnderlyingAsset, BigInteger>, BigDecimal>()
+val exchangeRateCache = mutableMapOf<Pair<LendOverseerMarket, BigInteger>, BigDecimal>()
 suspend fun Repository.getExchangeRate(
-    market: LendOverseerMarketAndUnderlyingAsset,
-    blockHeight: BigInteger
+    market: LendOverseerMarket, blockHeight: BigInteger
 ): BigDecimal {
     return exchangeRateCache.getOrPut(market to blockHeight) {
         json.decodeFromString<String>(
@@ -37,19 +36,16 @@ suspend fun Repository.getExchangeRate(
 }
 
 fun BigDecimal.toFixed(decimalPlaces: Long, roundingMode: RoundingMode = RoundingMode.FLOOR): String {
-    return roundToDigitPositionAfterDecimalPoint(decimalPlaces, roundingMode)
-        .toBigInteger()
-        .toString()
+    return roundToDigitPositionAfterDecimalPoint(decimalPlaces, roundingMode).toBigInteger().toString()
 }
 
 suspend fun Repository.simulateLiquidation(
-    market: LendOverseerMarketAndUnderlyingAsset,
+    market: LendOverseerMarket,
     borrowerId: String,
-    borrowersCollateralMarket: LendOverseerMarketAndUnderlyingAsset,
+    borrowersCollateralMarket: LendOverseerMarket,
     blockHeight: BigInteger,
     payable: BigDecimal,
 ): LendSimulatedLiquidation {
-    logger.i("simulateLiquidation payable: $payable")
     return json.decodeFromString(
         client.queryContractSmart(
             contractAddress = market.contract.address,
@@ -74,8 +70,7 @@ suspend fun Repository.liquidate(
     val callbackB64 = json.encodeToString(
         ExecuteMsg(
             liquidate = ExecuteMsg.Liquidate(
-                borrower = loan.candidate.id,
-                collateral = loan.candidate.marketInfo.contract.address
+                borrower = loan.candidate.id, collateral = loan.candidate.marketInfo.contract.address
             )
         )
     ).encodeBase64()

@@ -6,16 +6,13 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNamingStrategy
 
-class HttpClient {
-
-    private val json = Json { namingStrategy = JsonNamingStrategy.SnakeCase }
+class HttpClient() {
 
     val client = HttpClient {
 
         install(ContentNegotiation) {
-            json(json)
+            json(utils.json)
         }
     }
 

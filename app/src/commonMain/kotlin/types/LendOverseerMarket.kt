@@ -5,14 +5,14 @@ import com.ionspin.kotlin.bignum.integer.BigInteger
 import io.eqoty.cosmwasm.std.types.ContractInfo
 import msg.market.LendAccountLiquidity
 
-data class LendOverseerMarketAndUnderlyingAsset(
+data class LendOverseerMarket(
     val contract: ContractInfo,
     val symbol: String,
     val decimals: UInt,
     val ltvRatio: String,
     val underlying: ContractInfo,
 ) {
-    val underlyingAssetId = UnderlyingAssetId(underlying.address, symbol)
+    val underlyingAssetId = UnderlyingAssetId(underlying.address, lendMarketSymbol = symbol)
 }
 
 data class Candidate(
@@ -21,7 +21,7 @@ data class Candidate(
     val payableUsd: BigDecimal,
     val seizable: BigInteger,
     val seizableUsd: BigDecimal,
-    val marketInfo: LendOverseerMarketAndUnderlyingAsset,
+    val marketInfo: LendOverseerMarket,
     val totalPayable: BigInteger
 )
 
@@ -36,32 +36,34 @@ data class LendMarketBorrower(
     /** Borrow balance at the last interaction of the borrower. */
     val principalBalance: BigInteger,
     /** Current borrow balance. */
-    val actualBalance: BigInteger,
-    val liquidity: LendAccountLiquidity,
-    var markets: MutableList<LendOverseerMarketAndUnderlyingAsset>
+    val actualBalance: BigInteger, val liquidity: LendAccountLiquidity, var markets: MutableList<LendOverseerMarket>
 )
 
 data class Loan(
     val candidate: Candidate,
-    val market: LendOverseerMarketAndUnderlyingAsset,
+    val market: LendOverseerMarket,
 )
 
 data class UnderlyingAssetId(
     val underlyingAssetAddress: String,
-    val symbol: String = addressToUnderlyingAssetId(underlyingAssetAddress).symbol,
+    val lendMarketSymbol: String,
+    val snip20Symbol: String = addressToSnip20Symbol(underlyingAssetAddress)
 )
 
-const val scrtVariantSymbol = "SCRT"
-val sscrtAssetId = UnderlyingAssetId("secret1k0jntykt7e4g3y88ltc60czgjuqdy4c9e8fzek", scrtVariantSymbol)
-val stkdScrtAssetId = UnderlyingAssetId("secret1k6u0cy4feepm6pehnz804zmwakuwdapm69tuc4", scrtVariantSymbol)
-val seScrtAssetId = UnderlyingAssetId("secret16zfat8th6hvzhesj8f6rz3vzd7ll69ys580p2t", scrtVariantSymbol)
+const val scrtVariantLendMarketSymbol = "SCRT"
+val sscrtAssetId =
+    UnderlyingAssetId("secret1k0jntykt7e4g3y88ltc60czgjuqdy4c9e8fzek", scrtVariantLendMarketSymbol, "SSCRT")
+val stkdScrtAssetId =
+    UnderlyingAssetId("secret1k6u0cy4feepm6pehnz804zmwakuwdapm69tuc4", scrtVariantLendMarketSymbol, "STKD-SCRT")
+val seScrtAssetId =
+    UnderlyingAssetId("secret16zfat8th6hvzhesj8f6rz3vzd7ll69ys580p2t", scrtVariantLendMarketSymbol, "SESCRT")
 
 
-fun addressToUnderlyingAssetId(address: String): UnderlyingAssetId {
-    val symbol = when (address) {
-        sscrtAssetId.underlyingAssetAddress -> scrtVariantSymbol
-        stkdScrtAssetId.underlyingAssetAddress -> scrtVariantSymbol
-        seScrtAssetId.underlyingAssetAddress -> scrtVariantSymbol
+fun addressToSnip20Symbol(address: String): String {
+    val snip20Symbol = when (address) {
+        sscrtAssetId.underlyingAssetAddress -> sscrtAssetId.snip20Symbol
+        stkdScrtAssetId.underlyingAssetAddress -> stkdScrtAssetId.snip20Symbol
+        seScrtAssetId.underlyingAssetAddress -> seScrtAssetId.snip20Symbol
         "secret1zwwealwm0pcl9cul4nt6f38dsy6vzplw8lp3qg" -> "OSMO"
         "secret178t2cp33hrtlthphmt9lpd25qet349mg4kcega" -> "MANA"
         "secret18wpjn83dayu4meu6wnn29khfkwdxs7kyrz9c8f" -> "USDT"
@@ -75,12 +77,12 @@ fun addressToUnderlyingAssetId(address: String): UnderlyingAssetId {
         "secret1tact8rxxrvynk4pwukydnle4l0pdmj0sq9j9d5" -> "BNB"
         else -> throw Exception("Unknown address $address, cannot map to symbol")
     }
-    return UnderlyingAssetId(address, symbol)
+    return snip20Symbol
 }
 
 
-fun symbolToAssetId(symbol: String): UnderlyingAssetId {
-    val underlyingAssetAddress = when (symbol) {
+fun symbolToAssetId(lendMarketSymbol: String): UnderlyingAssetId {
+    val underlyingAssetAddress = when (lendMarketSymbol) {
         "OSMO" -> "secret1zwwealwm0pcl9cul4nt6f38dsy6vzplw8lp3qg"
         "MANA" -> "secret178t2cp33hrtlthphmt9lpd25qet349mg4kcega"
         "USDT" -> "secret18wpjn83dayu4meu6wnn29khfkwdxs7kyrz9c8f"
@@ -97,8 +99,8 @@ fun symbolToAssetId(symbol: String): UnderlyingAssetId {
         )
 
         else -> {
-            throw Exception("Unknown symbol $symbol, cannot map to address")
+            throw Exception("Unknown symbol $lendMarketSymbol, cannot map to address")
         }
     }
-    return UnderlyingAssetId(underlyingAssetAddress, symbol)
+    return UnderlyingAssetId(underlyingAssetAddress, lendMarketSymbol, lendMarketSymbol)
 }

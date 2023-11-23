@@ -9,10 +9,11 @@ suspend fun main() {
     ensureLibsodiumInitialized()
     val repository = getRepositoryWithDirectSigningWallet()
     val liquidator = Liquidator.create(repository)
+    val viewModel = AppViewModel(repository, liquidator)
     singleWindowApplication(
         title = "Sienna Lend Liquidator", state = WindowState(size = DpSize(500.dp, 800.dp))
     ) {
-        repository.App(liquidator)
+        App(viewModel)
     }
 }
 

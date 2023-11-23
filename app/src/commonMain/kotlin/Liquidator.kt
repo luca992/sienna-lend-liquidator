@@ -7,10 +7,11 @@ import com.ionspin.kotlin.bignum.integer.toBigInteger
 import datalayer.functions.*
 import kotlinx.serialization.encodeToString
 import msg.overseer.LendOverseerConfig
-import msg.overseer.LendOverseerMarket
+import msg.overseer.LendOverseerMarketQueryAnswer
 import msg.overseer.QueryMsg
 import types.*
 import utils.fetchAllPages
+import utils.json
 
 const val PRICES_UPDATE_INTERVAL = 3 * 60 * 1000
 val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST", "AAVE")
@@ -24,10 +25,8 @@ val ASSETS_TO_IGNORE_SEIZING: List<UnderlyingAssetId> =
 class Liquidator(
     val repo: Repository,
     private var constants: LendConstants,
-    var storage: Storage,
 //    private var manager: LiquidationsManager
 ) {
-
     private var isExecuting = false
 
     companion object {
@@ -46,7 +45,7 @@ class Liquidator(
                 )
             )
 
-            val allMarkets = fetchAllPages<LendOverseerMarket>({ pagination ->
+            val allMarkets = fetchAllPages<LendOverseerMarketQueryAnswer>({ pagination ->
                 json.decodeFromString(
                     client.queryContractSmart(
                         contractAddress = config.overseer.address,
@@ -57,74 +56,60 @@ class Liquidator(
             }, 30u, { x -> !BLACKLISTED_SYMBOLS.contains(x.symbol) })
 
             val assets = repo.fetchUnderlyingMulticallAssets(allMarkets)
-            val marketToMarketAndUnderlyingAsset = allMarkets.zip(assets).map { (lendOverseerMarket, underlyingAsset) ->
-                lendOverseerMarket to LendOverseerMarketAndUnderlyingAsset(
-                    contract = lendOverseerMarket.contract,
-                    symbol = lendOverseerMarket.symbol,
-                    decimals = lendOverseerMarket.decimals,
-                    ltvRatio = lendOverseerMarket.ltvRatio,
+            val lendOverseerMarketQueryAnswerToLendOverseerMarket = allMarkets.zip(assets).map { (lendOverseerMarketQueryAnswer, underlyingAsset) ->
+                lendOverseerMarketQueryAnswer to LendOverseerMarket(
+                    contract = lendOverseerMarketQueryAnswer.contract,
+                    symbol = lendOverseerMarketQueryAnswer.symbol,
+                    decimals = lendOverseerMarketQueryAnswer.decimals,
+                    ltvRatio = lendOverseerMarketQueryAnswer.ltvRatio,
                     underlying = underlyingAsset
                 )
             }.toMap()
-
-            val storage = Storage.init(repo, marketToMarketAndUnderlyingAsset)
+            repo.runtimeCache.lendOverSeerMarketQueryAnswerToLendOverseerMarket.putAll(lendOverseerMarketQueryAnswerToLendOverseerMarket)
+            repo.updatePrices()
+            repo.updateBlockHeight()
 
             val constants = LendConstants(
                 closeFactor = overseerConfig.close_factor.toBigDecimal(),
                 premium = overseerConfig.premium.toBigDecimal()
             )
             return Liquidator(
-                repo, constants, storage
+                repo, constants,
             )
         }
     }
 
 
-    suspend fun runOnce(specificMarket: UnderlyingAssetId? = null): List<Loan> {
-        return this.runLiquidationsRound(specificMarket)
-    }
-
-    fun stop() {
-//        if (this.liquidations_handle) {
-//            // clearInterval(this.liquidations_handle)
-//            // clearInterval(this.prices_update_handle)
-//        }
-    }
-
-    private suspend fun runLiquidationsRound(specificMarket: UnderlyingAssetId?): List<Loan> {
+    suspend fun updateLiquidations(specificMarket: LendOverseerMarket?) {
         if (isExecuting) {
-            return emptyList()
+            return
         }
-        storage.updateUserBalance()
-        if (this.storage.userBalance.value.isZero()) {
-            logger.i("Ran out of balance. Terminating...")
-            this.stop()
-
-            return emptyList()
-        }
+        repo.updateUserBalance(specificMarket?.let { listOf(it) }
+            ?: repo.runtimeCache.lendOverseerMarkets)
 
         isExecuting = true
 
-        return try {
-            storage.updateBlockHeight()
+        try {
+            repo.updateBlockHeight()
 
             val chosenMarkets = if (specificMarket != null) {
-                storage.markets.filter { x -> x.underlyingAssetId == specificMarket }
+                repo.runtimeCache.lendOverseerMarkets.filter { x -> x == specificMarket }
             } else {
-                storage.markets
+                repo.runtimeCache.lendOverseerMarkets
             }
             val marketCandidates = chosenMarkets.map { x -> marketCandidates(x) }
-            val loans = mutableListOf<Loan>()
+
 
             marketCandidates.forEachIndexed { i, candidates ->
+                val loans = mutableListOf<Loan>()
                 candidates.forEach { candidate ->
                     loans.add(
                         Loan(candidate, market = chosenMarkets[i])
                     )
                 }
+                repo.runtimeCache.marketToLoans[chosenMarkets[i]] = loans
+                logger.i("Found ${loans.size} liquidatable loans in ${chosenMarkets[i].underlyingAssetId.snip20Symbol} Lend Market")
             }
-            logger.i(loans.toString())
-            loans
 
 //            val liquidation = await this.choose_liquidation(loans)
 //
@@ -133,28 +118,26 @@ class Liquidator(
 //            }
         } catch (t: Throwable) {
             logger.e("Caught an error during liquidations round: ${t.message}")
-
             t.printStackTrace()
-            emptyList()
         } finally {
             isExecuting = false
         }
     }
 
-    private suspend fun marketCandidates(market: LendOverseerMarketAndUnderlyingAsset): List<Candidate> {
+    private suspend fun marketCandidates(market: LendOverseerMarket): List<Candidate> {
         val candidates = fetchAllPages({ page ->
-            repo.getBorrowers(market, page, storage.blockHeight)
+            repo.getBorrowers(market, page, repo.runtimeCache.blockHeight.value)
         }, 1u, { x ->
             if (x.liquidity.shortfall == BigInteger.ZERO) return@fetchAllPages false
 
             x.markets = x.markets.filter { m ->
-                val cachedMarketId = storage.marketToMarketAndUnderlyingAsset[m]?.underlyingAssetId
+                val cachedMarketId = repo.runtimeCache.lendOverSeerMarketQueryAnswerToLendOverseerMarket[m]?.underlyingAssetId
                 !BLACKLISTED_SYMBOLS.contains(m.symbol) && !ASSETS_TO_IGNORE_SEIZING.contains(cachedMarketId)
             }
 
             return@fetchAllPages x.markets.isNotEmpty()
         }).map {
-            it.toLendMarketBorrower(storage)
+            it.toLendMarketBorrower(repo.runtimeCache)
         }.toMutableList()
 
 
@@ -168,12 +151,12 @@ class Liquidator(
     }
 
     private suspend fun findCandidates(
-        market: LendOverseerMarketAndUnderlyingAsset, borrowers: MutableList<LendMarketBorrower>
+        market: LendOverseerMarket, borrowers: MutableList<LendMarketBorrower>
     ): List<Candidate> {
         // sorts the markets for each borrower by price in descending order (largest price first)
-        val sortByPrice: Comparator<LendOverseerMarketAndUnderlyingAsset> = Comparator { a, b ->
-            val priceA = storage.underlyingAssetToPrice[a.underlyingAssetId]!!
-            val priceB = storage.underlyingAssetToPrice[b.underlyingAssetId]!!
+        val sortByPrice: Comparator<LendOverseerMarket> = Comparator { a, b ->
+            val priceA = repo.runtimeCache.underlyingAssetToPrice[a.underlyingAssetId]!!
+            val priceB = repo.runtimeCache.underlyingAssetToPrice[b.underlyingAssetId]!!
             if (priceA == priceB) {
                 return@Comparator 0
             }
@@ -184,10 +167,10 @@ class Liquidator(
         val calcNet = { borrower: LendMarketBorrower ->
             // the current amount the borrower has to repay to the market in the markets currency with a max of the
             // clamped at the amount the person running this liquidator actually in their balance
-            val payable = maxPayable(borrower)
+            val payable = maxPayable(market, borrower, true)
 
-            (payable * constants.premium * storage.underlyingAssetToPrice[borrower.markets[0].underlyingAssetId]!!).divide(
-                storage.underlyingAssetToPrice[market.underlyingAssetId]!!,
+            (payable * constants.premium * repo.runtimeCache.underlyingAssetToPrice[borrower.markets[0].underlyingAssetId]!!).divide(
+                repo.runtimeCache.underlyingAssetToPrice[market.underlyingAssetId]!!,
                 DecimalMode(15, RoundingMode.ROUND_HALF_CEILING)
             )
         }
@@ -248,9 +231,9 @@ class Liquidator(
     )
 
     private suspend fun processCandidate(
-        market: LendOverseerMarketAndUnderlyingAsset, borrower: LendMarketBorrower,
+        market: LendOverseerMarket, borrower: LendMarketBorrower,
     ): ProcessCandidateResult {
-        val payable = maxPayable(borrower)
+        val payable = maxPayable(market, borrower, true)
 
         var bestSeizable = BigInteger.ZERO
         var bestSeizableUsd = BigDecimal.ZERO
@@ -274,10 +257,10 @@ class Liquidator(
 
         borrower.markets.forEachIndexed { i, m ->
 
-            val exchange_rate = repo.getExchangeRate(market, storage.blockHeight)
+            val exchange_rate = repo.getExchangeRate(market, repo.runtimeCache.blockHeight.value)
             // Values are in sl-tokens, so we need to convert to
             // the underlying in order for them to be useful here.
-            val info = repo.simulateLiquidation(market, borrower.id, m, storage.blockHeight, payable)
+            val info = repo.simulateLiquidation(market, borrower.id, m, repo.runtimeCache.blockHeight.value, payable)
 
             val seizable = BigDecimal.fromBigInteger(info.seize_amount).times(exchange_rate)
 
@@ -288,9 +271,9 @@ class Liquidator(
                     candidate = Candidate(
                         id = borrower.id,
                         payable = payable,
-                        payableUsd = storage.usdValue(payable, market.underlyingAssetId, market.decimals),
+                        payableUsd = repo.usdValue(payable, market.underlyingAssetId, market.decimals),
                         seizable = seizable.toBigInteger(),
-                        seizableUsd = storage.usdValue(seizable, m.underlyingAssetId, m.decimals),
+                        seizableUsd = repo.usdValue(seizable, m.underlyingAssetId, m.decimals),
                         marketInfo = m,
                         totalPayable = (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toBigInteger()
                     ),
@@ -307,7 +290,7 @@ class Liquidator(
             if (info.shortfall == BigInteger.ZERO) {
                 actual_payable = payable
                 actual_seizable = seizable
-                actual_seizable_usd = storage.usdValue(seizable, m.underlyingAssetId, m.decimals)
+                actual_seizable_usd = repo.usdValue(seizable, m.underlyingAssetId, m.decimals)
 
                 // We don't have to check further since this is the second-best scenario that we've got.
                 done = true
@@ -331,7 +314,7 @@ class Liquidator(
                         BigDecimal.fromBigInteger(info.seize_amount), DecimalMode(15, RoundingMode.FLOOR)
                     ))
 
-                    actual_seizable_usd = storage.usdValue(actual_seizable, m.underlyingAssetId, m.decimals)
+                    actual_seizable_usd = repo.usdValue(actual_seizable, m.underlyingAssetId, m.decimals)
                 }
             }
 
@@ -350,7 +333,7 @@ class Liquidator(
             candidate = Candidate(
                 id = borrower.id,
                 payable = bestPayable,
-                payableUsd = storage.usdValue(bestPayable, market.underlyingAssetId, market.decimals),
+                payableUsd = repo.usdValue(bestPayable, market.underlyingAssetId, market.decimals),
                 seizable = bestSeizable,
                 seizableUsd = bestSeizableUsd,
                 marketInfo = borrower.markets[marketIndex],
@@ -360,12 +343,23 @@ class Liquidator(
     }
 
 
-    private fun maxPayable(borrower: LendMarketBorrower): BigDecimal {
+    /***
+     * @param clamp if true clamp the payable amount to the user's actual balance for the market's underlying asset
+     */
+    private fun maxPayable(
+        market: LendOverseerMarket, borrower: LendMarketBorrower, clamp: Boolean
+    ): BigDecimal {
         return BigDecimal.fromBigInteger(
-            clamp(
-                (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toFixed(0).toBigInteger(),
-                storage.userBalance.value
-            )
+            when (clamp) {
+                true -> clamp(
+                    (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toFixed(0)
+                        .toBigInteger(), repo.runtimeCache.userBalance[market.underlyingAssetId] ?: BigInteger.ZERO
+                )
+
+                false -> (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toFixed(0)
+                    .toBigInteger()
+            }
+
         )
     }
 
@@ -378,14 +372,18 @@ class Liquidator(
     }
 
     private fun liquidationCostUsd(): BigDecimal {
-        return storage.gasCostUsd(repo.config.gasCosts.liquidate.toBigDecimal())
+        return repo.gasCostUsd(repo.config.gasCosts.liquidate.toBigDecimal())
     }
 
 
     suspend fun liquidate(loan: Loan) {
         logger.i("Attempting to liquate loan: ${loan.candidate.id}")
         val simulatedLiquidation = repo.simulateLiquidation(
-            loan.market, loan.candidate.id, loan.candidate.marketInfo, storage.blockHeight, loan.candidate.payable
+            loan.market,
+            loan.candidate.id,
+            loan.candidate.marketInfo,
+            repo.runtimeCache.blockHeight.value,
+            loan.candidate.payable
         )
         logger.i("Simulated liquidation: $simulatedLiquidation")
         if (simulatedLiquidation.shortfall != BigInteger.ZERO) {
@@ -397,7 +395,7 @@ class Liquidator(
         logger.i("Successfully liquidated a loan by repaying $repaidAmount ${loan.market.symbol} and seized ~$${loan.candidate.seizableUsd} worth of ${loan.candidate.marketInfo.symbol} (transfered to market: ${loan.candidate.marketInfo.contract.address})!")
         logger.i("TX hash: ${response.txhash}")
 
-        storage.updateUserBalance()
+        repo.updateUserBalance(loan.market)
     }
 }
 
