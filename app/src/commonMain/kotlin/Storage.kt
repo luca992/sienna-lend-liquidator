@@ -140,7 +140,7 @@ class Storage private constructor(
     suspend fun updateUserBalance() {
         val client = repository.client
         val senderAddress = repository.senderAddress
-        val contract = this.repository.config.token
+        val contract = repository.config.token
 
         val query = Json.encodeToString(
             Snip20Msgs.Query(

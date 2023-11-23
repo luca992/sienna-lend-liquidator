@@ -52,10 +52,9 @@ data class UnderlyingAssetId(
 )
 
 const val scrtVariantSymbol = "SCRT"
-val sscrtAssetId = UnderlyingAssetId("secret1k0jntykt7e4g3y88ltc60czgjuqdy4c9e8fzek", "SCRT")
-val stkdScrtAssetId = UnderlyingAssetId("secret1k6u0cy4feepm6pehnz804zmwakuwdapm69tuc4", "SCRT")
-val seScrtAssetId = UnderlyingAssetId("secret16zfat8th6hvzhesj8f6rz3vzd7ll69ys580p2t", "SCRT")
-
+val sscrtAssetId = UnderlyingAssetId("secret1k0jntykt7e4g3y88ltc60czgjuqdy4c9e8fzek", scrtVariantSymbol)
+val stkdScrtAssetId = UnderlyingAssetId("secret1k6u0cy4feepm6pehnz804zmwakuwdapm69tuc4", scrtVariantSymbol)
+val seScrtAssetId = UnderlyingAssetId("secret16zfat8th6hvzhesj8f6rz3vzd7ll69ys580p2t", scrtVariantSymbol)
 
 
 fun addressToUnderlyingAssetId(address: String): UnderlyingAssetId {
@@ -63,6 +62,17 @@ fun addressToUnderlyingAssetId(address: String): UnderlyingAssetId {
         sscrtAssetId.underlyingAssetAddress -> scrtVariantSymbol
         stkdScrtAssetId.underlyingAssetAddress -> scrtVariantSymbol
         seScrtAssetId.underlyingAssetAddress -> scrtVariantSymbol
+        "secret1zwwealwm0pcl9cul4nt6f38dsy6vzplw8lp3qg" -> "OSMO"
+        "secret178t2cp33hrtlthphmt9lpd25qet349mg4kcega" -> "MANA"
+        "secret18wpjn83dayu4meu6wnn29khfkwdxs7kyrz9c8f" -> "USDT"
+        "secret1h6z05y90gwm4sqxzhz4pkyp36cna9xtp7q0urv" -> "USDC"
+        "secret1vnjck36ld45apf8u4fedxd5zy7f5l92y3w5qwq" -> "DAI"
+        "secret1g7jfnxmxkjgqdts9wlmn238mrzxz5r92zwqv4a" -> "WBTC"
+        "secret19ungtd2c7srftqdwgq0dspwvrw63dhu79qxv88" -> "XMR"
+        "secret1wuzzjsdhthpvuyeeyhfq2ftsn3mvwf9rxy6ykw" -> "ETH"
+        "secret14mzwd0ps5q277l20ly2q3aetqe3ev4m4260gf4" -> "ATOM"
+        "secret1yxwnyk8htvvq25x2z87yj0r5tqpev452fk6h5h" -> "AAVE"
+        "secret1tact8rxxrvynk4pwukydnle4l0pdmj0sq9j9d5" -> "BNB"
         else -> throw Exception("Unknown address $address, cannot map to symbol")
     }
     return UnderlyingAssetId(address, symbol)
@@ -82,8 +92,12 @@ fun symbolToAssetId(symbol: String): UnderlyingAssetId {
         "ATOM" -> "secret14mzwd0ps5q277l20ly2q3aetqe3ev4m4260gf4"
         "AAVE" -> "secret1yxwnyk8htvvq25x2z87yj0r5tqpev452fk6h5h"
         "BNB" -> "secret1tact8rxxrvynk4pwukydnle4l0pdmj0sq9j9d5"
+        "SCRT" -> throw Exception(
+            "SCRT is has multiple variants: sscrt, stkd-scrt, sescrt. Mapping to an address is not possible."
+        )
+
         else -> {
-            throw Exception("Unknown symbol $symbol, cannot map to CoinGeckoId")
+            throw Exception("Unknown symbol $symbol, cannot map to address")
         }
     }
     return UnderlyingAssetId(underlyingAssetAddress, symbol)
