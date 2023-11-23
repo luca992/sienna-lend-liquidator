@@ -8,7 +8,7 @@
   "max_price_impact": 0.05,
   "gas_costs": {
     "swap": 140000,
-    "liquidate": 900000,
+    "liquidate": 1200000,
     "withdraw": 110000
   },
   "token": {
