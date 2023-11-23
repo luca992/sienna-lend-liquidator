@@ -71,68 +71,66 @@ fun App(viewModel: AppViewModel) {
                 }
             })
         }) { innerPadding ->
-            Column(
-                modifier = Modifier.padding(innerPadding).fillMaxSize()
-            ) {
-                Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    ) {
-                        Row(
+
+            LazyColumn(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+                        Column(
                             modifier = Modifier.fillMaxWidth().padding(8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Lend Market: ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}")
-                            Row {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Lend Market: ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}")
+                                Row {
+                                    Column {
+                                        Text(
+                                            "Clamp to user balance:", style = MaterialTheme.typography.titleSmall
+                                        )
+                                        Text(
+                                            "$balance ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
+                                            style = MaterialTheme.typography.titleSmall
+                                        )
+                                    }
+                                    Switch(checked = viewModel.clampToWalletBalance.value, onCheckedChange = {
+                                        viewModel.clampToWalletBalance.value = it
+                                    })
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
                                 Column {
                                     Text(
-                                        "Clamp to user balance:", style = MaterialTheme.typography.titleSmall
+                                        "Underlying asset balance:",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Medium
                                     )
                                     Text(
-                                        "$balance ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
-                                        style = MaterialTheme.typography.titleSmall
+                                        "${viewModel.marketUnderlyingBalance.value} ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
+                                        style = MaterialTheme.typography.titleSmall,
                                     )
                                 }
-                                Switch(checked = viewModel.clampToWalletBalance.value, onCheckedChange = {
-                                    viewModel.clampToWalletBalance.value = it
-                                })
-                            }
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(
-                                    "Underlying asset balance:",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    "${viewModel.marketUnderlyingBalance.value} ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
-                                    style = MaterialTheme.typography.titleSmall,
-                                )
-                            }
-                            Button(onClick = {
-                                buttonText = "Working..."
-                                coroutineScope.launch {
-                                    viewModel.getLoans()
-                                    buttonText = "Query for loans to liquidate!"
-                                }
+                                Button(onClick = {
+                                    buttonText = "Working..."
+                                    coroutineScope.launch {
+                                        viewModel.getLoans()
+                                        buttonText = "Query for loans to liquidate!"
+                                    }
 
-                            }) {
-                                Text(buttonText)
+                                }) {
+                                    Text(buttonText)
+                                }
                             }
                         }
                     }
                 }
-
-                LazyColumn {
-                    items(loans) { loan ->
-                        LoanCard(loan) {
-                            viewModel.liquidate(loan)
-                        }
+                items(loans) { loan ->
+                    LoanCard(loan) {
+                        viewModel.liquidate(loan)
                     }
                 }
             }
