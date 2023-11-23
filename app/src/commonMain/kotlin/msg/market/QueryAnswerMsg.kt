@@ -1,7 +1,8 @@
 package msg.market
 
-import datalayer.sources.cache.RuntimeCache
+import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import com.ionspin.kotlin.bignum.integer.BigInteger
+import datalayer.sources.cache.RuntimeCache
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import msg.overseer.LendOverseerMarketQueryAnswer
@@ -28,11 +29,13 @@ data class LendMarketBorrowerAnswer(
     var markets: List<LendOverseerMarketQueryAnswer>
 ) {
     fun toLendMarketBorrower(storage: RuntimeCache): LendMarketBorrower {
-        return LendMarketBorrower(id = id,
+        return LendMarketBorrower(
+            id = id,
             principalBalance = principalBalance,
             actualBalance = actualBalance,
             liquidity = liquidity,
-            markets = markets.map { market -> storage.lendOverSeerMarketQueryAnswerToLendOverseerMarket[market]!! }.toMutableList()
+            markets = markets.map { market -> storage.lendOverSeerMarketQueryAnswerToLendOverseerMarket[market]!! }
+                .toMutableList()
         )
     }
 }
@@ -44,3 +47,23 @@ data class LendAccountLiquidity(
     /** If > 0 the account is currently below the collateral requirement and is subject to liquidation. */
     @Contextual val shortfall: BigInteger
 )
+
+
+@Serializable
+data class LendMarketState(
+    val accrualBlock: ULong,
+    @Contextual val borrowIndex: BigDecimal,
+    @Contextual val totalBorrows: BigInteger,
+    @Contextual val totalReserves: BigInteger,
+    @Contextual val totalSupply: BigInteger,
+    @Contextual val underlyingBalance: BigInteger,
+    @Contextual val config: Config,
+) {
+
+    @Serializable
+    data class Config(
+        @Contextual val initialExchangeRate: Double,
+        @Contextual val reserveFactor: Double,
+        @Contextual val seizeFactor: Double,
+    )
+}

@@ -47,33 +47,59 @@ fun App(viewModel: AppViewModel) {
             TopAppBar(title = {
                 Text("Liquidator")
             }, actions = {
-                OutlinedButton(onClick = {
-                    selectLendMarketDropdownExpanded = !selectLendMarketDropdownExpanded
-                }) {
-                    Text("Lend Market: ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}")
-                }
-                DropdownMenu(
-                    expanded = selectLendMarketDropdownExpanded,
-                    onDismissRequest = {
-                        selectLendMarketDropdownExpanded = false
-                    },
-                ) {
-                    viewModel.allLendMarkets.forEach { lendMarket ->
-                        DropdownMenuItem({
-                            Text(lendMarket.underlyingAssetId.snip20Symbol)
-                        }, onClick = {
-                            coroutineScope.launch {
-                                viewModel.setSelectedLendMarket(lendMarket)
-                            }
-                            selectLendMarketDropdownExpanded = false
-                        })
-                    }
-                }
+
             })
         }) { innerPadding ->
             Column(
                 modifier = Modifier.padding(innerPadding).fillMaxSize()
             ) {
+                Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Lend Market: ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}")
+                            OutlinedButton(onClick = {
+                                selectLendMarketDropdownExpanded = !selectLendMarketDropdownExpanded
+                            }) {
+                                Text("Change")
+                                DropdownMenu(
+                                    expanded = selectLendMarketDropdownExpanded,
+                                    onDismissRequest = {
+                                        selectLendMarketDropdownExpanded = false
+                                    },
+                                ) {
+                                    viewModel.allLendMarkets.forEach { lendMarket ->
+                                        DropdownMenuItem({
+                                            Text(lendMarket.underlyingAssetId.snip20Symbol)
+                                        }, onClick = {
+                                            coroutineScope.launch {
+                                                viewModel.setSelectedLendMarket(lendMarket)
+                                            }
+                                            selectLendMarketDropdownExpanded = false
+                                        })
+                                    }
+                                }
+                            }
+                        }
+                        Row(modifier = Modifier.padding(start = 8.dp)) {
+                            Column {
+                                Text(
+                                    "Underlying asset balance:",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    "${viewModel.marketUnderlyingBalance.value} ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                            }
+                        }
+                    }
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -92,8 +118,7 @@ fun App(viewModel: AppViewModel) {
                     Row {
                         Column(modifier = Modifier.padding(end = 8.dp)) {
                             Text(
-                                "Clamp to user balance:",
-                                style = MaterialTheme.typography.titleSmall
+                                "Clamp to user balance:", style = MaterialTheme.typography.titleSmall
                             )
                             Text(
                                 "$balance ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",

@@ -9,15 +9,19 @@ data class QueryMsg(
     val exchangeRate: ExchangeRate? = null,
     val borrowers: Borrowers? = null,
     val simulateLiquidation: SimulateLiquidation? = null,
+    val state: State? = null,
 ) {
     @Serializable
-    class ExchangeRate(val block: ULong)
+    data class ExchangeRate(val block: ULong)
 
     @Serializable
-    class Borrowers(val block: ULong, val pagination: Pagination)
+    class State()
 
     @Serializable
-    class SimulateLiquidation(
+    data class Borrowers(val block: ULong, val pagination: Pagination)
+
+    @Serializable
+    data class SimulateLiquidation(
         val block: ULong,
         val borrower: String,
         val collateral: String,
