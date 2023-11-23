@@ -1,8 +1,10 @@
 package datalayer.functions
 
 import Repository
+import com.ionspin.kotlin.bignum.integer.toBigInteger
 import io.eqoty.secret.std.contract.msg.Snip20Msgs
 import kotlinx.serialization.encodeToString
+import logger
 import types.LendOverseerMarket
 import utils.json
 
@@ -21,10 +23,16 @@ suspend fun Repository.updateUserBalance(lendOverseerMarket: LendOverseerMarket)
             )
         )
     )
-    val response = client.queryContractSmart(
-        lendOverseerMarket.underlying.address, query, lendOverseerMarket.underlying.codeHash
-    )
+    val response = try {
+        json.decodeFromString<Snip20Msgs.QueryAnswer>(
+            client.queryContractSmart(
+                lendOverseerMarket.underlying.address, query, lendOverseerMarket.underlying.codeHash
+            )
+        ).balance!!.amount!!
+    } catch (t: Throwable) {
+        logger.e("Failed to query balance for ${lendOverseerMarket.underlyingAssetId.snip20Symbol} with permit")
+        (-1).toBigInteger()
+    }
 
-    runtimeCache.userBalance[lendOverseerMarket.underlyingAssetId] =
-        json.decodeFromString<Snip20Msgs.QueryAnswer>(response).balance!!.amount!!
+    runtimeCache.userBalance[lendOverseerMarket.underlyingAssetId] = response
 }

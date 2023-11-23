@@ -146,9 +146,10 @@ fun LoanCard(loan: Loan, onClickLiquidate: suspend () -> Unit) {
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(4.dp))
+                val loanMarketUnderlyingAssetSnip20Symbol = loan.market.underlyingAssetId.snip20Symbol
                 val loanCollateralSnip20Symbol = loan.candidate.marketInfo.underlyingAssetId.snip20Symbol
-                Text("Total Amount Owed (Payable): ${loan.candidate.totalPayable} $loanCollateralSnip20Symbol")
-                Text("Clamped Amount Owed (Payable): ${loan.candidate.payable.toPlainString()} $loanCollateralSnip20Symbol")
+                Text("Total Amount Owed (Payable): ${loan.candidate.totalPayable} $loanMarketUnderlyingAssetSnip20Symbol")
+                Text("Clamped Amount Owed (Payable): ${loan.candidate.payable.toPlainString()} $loanMarketUnderlyingAssetSnip20Symbol")
                 Text("Clamped USD Value Of Payable: ${loan.candidate.payableUsd.toPlainString()}")
                 Spacer(modifier = Modifier.height(8.dp))
 
