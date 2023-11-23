@@ -15,24 +15,51 @@ suspend fun Repository.updateUserBalance(underlyingAssetIds: List<LendOverseerMa
 }
 
 suspend fun Repository.updateUserBalance(lendOverseerMarket: LendOverseerMarket) {
-    val query = json.encodeToString(
-        Snip20Msgs.Query(
-            withPermit = Snip20Msgs.Query.WithPermit(
-                permit = getPermit(senderAddress, lendOverseerMarket.underlying.address),
-                query = Snip20Msgs.QueryWithPermit(balance = Snip20Msgs.QueryWithPermit.Balance())
+    val viewingKey =
+        config.underlyingAssetViewingKeys.firstOrNull() { it.address == lendOverseerMarket.underlying.address }
+
+    val balance = when (viewingKey) {
+        null -> {
+            val query = json.encodeToString(
+                Snip20Msgs.Query(
+                    withPermit = Snip20Msgs.Query.WithPermit(
+                        permit = getPermit(senderAddress, lendOverseerMarket.underlying.address),
+                        query = Snip20Msgs.QueryWithPermit(balance = Snip20Msgs.QueryWithPermit.Balance())
+                    )
+                )
             )
-        )
-    )
-    val response = try {
-        json.decodeFromString<Snip20Msgs.QueryAnswer>(
-            client.queryContractSmart(
-                lendOverseerMarket.underlying.address, query, lendOverseerMarket.underlying.codeHash
+            try {
+                json.decodeFromString<Snip20Msgs.QueryAnswer>(
+                    client.queryContractSmart(
+                        lendOverseerMarket.underlying.address, query, lendOverseerMarket.underlying.codeHash
+                    )
+                ).balance!!.amount!!
+            } catch (t: Throwable) {
+                logger.e("Failed to query balance for ${lendOverseerMarket.underlyingAssetId.snip20Symbol} with permit")
+                (-1).toBigInteger()
+            }
+        }
+
+        else -> {
+            val query = json.encodeToString(
+                Snip20Msgs.Query(
+                    balance = Snip20Msgs.Query.Balance(
+                        address = senderAddress, key = viewingKey.viewingKey
+                    )
+                )
             )
-        ).balance!!.amount!!
-    } catch (t: Throwable) {
-        logger.e("Failed to query balance for ${lendOverseerMarket.underlyingAssetId.snip20Symbol} with permit")
-        (-1).toBigInteger()
+            try {
+                json.decodeFromString<Snip20Msgs.QueryAnswer>(
+                    client.queryContractSmart(
+                        lendOverseerMarket.underlying.address, query, lendOverseerMarket.underlying.codeHash
+                    )
+                ).balance!!.amount!!
+            } catch (t: Throwable) {
+                logger.e("Failed to query balance for ${lendOverseerMarket.underlyingAssetId.snip20Symbol} with viewing key")
+                (-1).toBigInteger()
+            }
+        }
     }
 
-    runtimeCache.userBalance[lendOverseerMarket.underlyingAssetId] = response
+    runtimeCache.userBalance[lendOverseerMarket.underlyingAssetId] = balance
 }

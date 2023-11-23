@@ -11,11 +11,12 @@
     "liquidate": 1200000,
     "withdraw": 110000
   },
-  "token": {
-    "address": "secret1k6u0cy4feepm6pehnz804zmwakuwdapm69tuc4",
-    "code_hash": "f6be719b3c6feb498d3554ca0398eb6b7e7db262acb33f84a8f12106da6bbb09",
-    "underlying_vk": ""
-  },
+  "underlying_asset_viewing_keys": [
+    {
+      "address": "secret1k6u0cy4feepm6pehnz804zmwakuwdapm69tuc4",
+      "viewing_key": ""
+    }
+  ],
   "overseer": {
     "address": "secret1pf88n9hm64mn58aw48jxfs2fsvzr07svnrrdlv",
     "code_hash": "bd573658377d724c691715e267c4765b4643999e35f2c143f03d57f00fde4454"

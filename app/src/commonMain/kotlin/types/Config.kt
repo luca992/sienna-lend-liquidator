@@ -16,20 +16,16 @@ data class Config(
     val multicall: ContractInfo,
     val router: ContractInfo,
     val factory: ContractInfo,
-    val token: TokenInfo,
+    val underlyingAssetViewingKeys: List<ViewingKey>,
     val gasCosts: GasCosts
 )
 
 @Serializable
-data class TokenInfo(
-    val address: String,
-    val codeHash: String,
-    val underlyingVk: String
+data class ViewingKey(
+    val address: String, val viewingKey: String
 )
 
 @Serializable
 data class GasCosts(
-    val swap: Int,
-    val liquidate: Int,
-    val withdraw: Int
+    val swap: Int, val liquidate: Int, val withdraw: Int
 )
