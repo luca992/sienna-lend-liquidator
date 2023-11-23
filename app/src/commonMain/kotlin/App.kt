@@ -50,7 +50,7 @@ fun App(viewModel: AppViewModel) {
                 OutlinedButton(onClick = {
                     selectLendMarketDropdownExpanded = !selectLendMarketDropdownExpanded
                 }) {
-                    Text("Select Lend Market")
+                    Text("Lend Market: ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}")
                 }
                 DropdownMenu(
                     expanded = selectLendMarketDropdownExpanded,
