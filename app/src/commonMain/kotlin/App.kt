@@ -27,7 +27,7 @@ fun App(viewModel: AppViewModel) {
     var buttonText by remember { mutableStateOf("Query for loans to liquidate!") }
     val balance by remember {
         derivedStateOf {
-            viewModel.balance[viewModel.selectedLendMarket.value.underlyingAssetId] ?: -1.toBigInteger()
+            viewModel.balance[viewModel.selectedLendMarket.value.underlyingAssetId] ?: (-1).toBigInteger()
         }
     }
     val loans by remember {
@@ -47,7 +47,28 @@ fun App(viewModel: AppViewModel) {
             TopAppBar(title = {
                 Text("Liquidator")
             }, actions = {
-
+                OutlinedButton(onClick = {
+                    selectLendMarketDropdownExpanded = !selectLendMarketDropdownExpanded
+                }) {
+                    Text("Change Lend Market")
+                    DropdownMenu(
+                        expanded = selectLendMarketDropdownExpanded,
+                        onDismissRequest = {
+                            selectLendMarketDropdownExpanded = false
+                        },
+                    ) {
+                        viewModel.allLendMarkets.forEach { lendMarket ->
+                            DropdownMenuItem({
+                                Text(lendMarket.underlyingAssetId.snip20Symbol)
+                            }, onClick = {
+                                coroutineScope.launch {
+                                    viewModel.setSelectedLendMarket(lendMarket)
+                                }
+                                selectLendMarketDropdownExpanded = false
+                            })
+                        }
+                    }
+                }
             })
         }) { innerPadding ->
             Column(
@@ -62,30 +83,26 @@ fun App(viewModel: AppViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("Lend Market: ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}")
-                            OutlinedButton(onClick = {
-                                selectLendMarketDropdownExpanded = !selectLendMarketDropdownExpanded
-                            }) {
-                                Text("Change")
-                                DropdownMenu(
-                                    expanded = selectLendMarketDropdownExpanded,
-                                    onDismissRequest = {
-                                        selectLendMarketDropdownExpanded = false
-                                    },
-                                ) {
-                                    viewModel.allLendMarkets.forEach { lendMarket ->
-                                        DropdownMenuItem({
-                                            Text(lendMarket.underlyingAssetId.snip20Symbol)
-                                        }, onClick = {
-                                            coroutineScope.launch {
-                                                viewModel.setSelectedLendMarket(lendMarket)
-                                            }
-                                            selectLendMarketDropdownExpanded = false
-                                        })
-                                    }
+                            Row {
+                                Column {
+                                    Text(
+                                        "Clamp to user balance:", style = MaterialTheme.typography.titleSmall
+                                    )
+                                    Text(
+                                        "$balance ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
                                 }
+                                Switch(checked = viewModel.clampToWalletBalance.value, onCheckedChange = {
+                                    viewModel.clampToWalletBalance.value = it
+                                })
                             }
                         }
-                        Row(modifier = Modifier.padding(start = 8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
                             Column {
                                 Text(
                                     "Underlying asset balance:",
@@ -97,40 +114,20 @@ fun App(viewModel: AppViewModel) {
                                     style = MaterialTheme.typography.titleSmall,
                                 )
                             }
+                            Button(onClick = {
+                                buttonText = "Working..."
+                                coroutineScope.launch {
+                                    viewModel.getLoans()
+                                    buttonText = "Query for loans to liquidate!"
+                                }
+
+                            }) {
+                                Text(buttonText)
+                            }
                         }
                     }
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Button(onClick = {
-                        buttonText = "Working..."
-                        coroutineScope.launch {
-                            viewModel.getLoans()
-                            buttonText = "Query for loans to liquidate!"
-                        }
 
-                    }) {
-                        Text(buttonText)
-                    }
-                    Row {
-                        Column(modifier = Modifier.padding(end = 8.dp)) {
-                            Text(
-                                "Clamp to user balance:", style = MaterialTheme.typography.titleSmall
-                            )
-                            Text(
-                                "$balance ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                        }
-                        Switch(checked = viewModel.clampToWalletBalance.value, onCheckedChange = {
-                            viewModel.clampToWalletBalance.value = it
-                        })
-                    }
-
-                }
                 LazyColumn {
                     items(loans) { loan ->
                         LoanCard(loan) {
