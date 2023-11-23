@@ -167,7 +167,7 @@ class Liquidator(
         val calcNet = { borrower: LendMarketBorrower ->
             // the current amount the borrower has to repay to the market in the markets currency with a max of the
             // clamped at the amount the person running this liquidator actually in their balance
-            val payable = maxPayable(market, borrower, true)
+            val payable = maxPayable(market, borrower, false)
 
             (payable * constants.premium * repo.runtimeCache.underlyingAssetToPrice[borrower.markets[0].underlyingAssetId]!!).divide(
                 repo.runtimeCache.underlyingAssetToPrice[market.underlyingAssetId]!!,
@@ -233,7 +233,7 @@ class Liquidator(
     private suspend fun processCandidate(
         market: LendOverseerMarket, borrower: LendMarketBorrower,
     ): ProcessCandidateResult {
-        val payable = maxPayable(market, borrower, true)
+        val payable = maxPayable(market, borrower, false)
 
         var bestSeizable = BigInteger.ZERO
         var bestSeizableUsd = BigDecimal.ZERO
