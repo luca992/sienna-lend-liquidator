@@ -56,16 +56,19 @@ class Liquidator(
             }, 30u, { x -> !BLACKLISTED_SYMBOLS.contains(x.symbol) })
 
             val assets = repo.fetchUnderlyingMulticallAssets(allMarkets)
-            val lendOverseerMarketQueryAnswerToLendOverseerMarket = allMarkets.zip(assets).map { (lendOverseerMarketQueryAnswer, underlyingAsset) ->
-                lendOverseerMarketQueryAnswer to LendOverseerMarket(
-                    contract = lendOverseerMarketQueryAnswer.contract,
-                    symbol = lendOverseerMarketQueryAnswer.symbol,
-                    decimals = lendOverseerMarketQueryAnswer.decimals,
-                    ltvRatio = lendOverseerMarketQueryAnswer.ltvRatio,
-                    underlying = underlyingAsset
-                )
-            }.toMap()
-            repo.runtimeCache.lendOverSeerMarketQueryAnswerToLendOverseerMarket.putAll(lendOverseerMarketQueryAnswerToLendOverseerMarket)
+            val lendOverseerMarketQueryAnswerToLendOverseerMarket =
+                allMarkets.zip(assets).map { (lendOverseerMarketQueryAnswer, underlyingAsset) ->
+                    lendOverseerMarketQueryAnswer to LendOverseerMarket(
+                        contract = lendOverseerMarketQueryAnswer.contract,
+                        symbol = lendOverseerMarketQueryAnswer.symbol,
+                        decimals = lendOverseerMarketQueryAnswer.decimals,
+                        ltvRatio = lendOverseerMarketQueryAnswer.ltvRatio,
+                        underlying = underlyingAsset
+                    )
+                }.toMap()
+            repo.runtimeCache.lendOverSeerMarketQueryAnswerToLendOverseerMarket.putAll(
+                lendOverseerMarketQueryAnswerToLendOverseerMarket
+            )
             repo.updatePrices()
             repo.updateBlockHeight()
 
@@ -80,7 +83,7 @@ class Liquidator(
     }
 
 
-    suspend fun updateLiquidations(specificMarket: LendOverseerMarket?) {
+    suspend fun updateLiquidations(specificMarket: LendOverseerMarket?, clampToWalletBalance: Boolean) {
         if (isExecuting) {
             return
         }
@@ -97,7 +100,7 @@ class Liquidator(
             } else {
                 repo.runtimeCache.lendOverseerMarkets
             }
-            val marketCandidates = chosenMarkets.map { x -> marketCandidates(x) }
+            val marketCandidates = chosenMarkets.map { x -> marketCandidates(x, clampToWalletBalance) }
 
 
             marketCandidates.forEachIndexed { i, candidates ->
@@ -124,14 +127,15 @@ class Liquidator(
         }
     }
 
-    private suspend fun marketCandidates(market: LendOverseerMarket): List<Candidate> {
+    private suspend fun marketCandidates(market: LendOverseerMarket, clampToWalletBalance: Boolean): List<Candidate> {
         val candidates = fetchAllPages({ page ->
             repo.getBorrowers(market, page, repo.runtimeCache.blockHeight.value)
         }, 1u, { x ->
             if (x.liquidity.shortfall == BigInteger.ZERO) return@fetchAllPages false
 
             x.markets = x.markets.filter { m ->
-                val cachedMarketId = repo.runtimeCache.lendOverSeerMarketQueryAnswerToLendOverseerMarket[m]?.underlyingAssetId
+                val cachedMarketId =
+                    repo.runtimeCache.lendOverSeerMarketQueryAnswerToLendOverseerMarket[m]?.underlyingAssetId
                 !BLACKLISTED_SYMBOLS.contains(m.symbol) && !ASSETS_TO_IGNORE_SEIZING.contains(cachedMarketId)
             }
 
@@ -147,11 +151,11 @@ class Liquidator(
             return emptyList()
         }
 
-        return findCandidates(market, candidates)
+        return findCandidates(market, candidates, clampToWalletBalance)
     }
 
     private suspend fun findCandidates(
-        market: LendOverseerMarket, borrowers: MutableList<LendMarketBorrower>
+        market: LendOverseerMarket, borrowers: MutableList<LendMarketBorrower>, clampToWalletBalance: Boolean
     ): List<Candidate> {
         // sorts the markets for each borrower by price in descending order (largest price first)
         val sortByPrice: Comparator<LendOverseerMarket> = Comparator { a, b ->
@@ -167,7 +171,7 @@ class Liquidator(
         val calcNet = { borrower: LendMarketBorrower ->
             // the current amount the borrower has to repay to the market in the markets currency with a max of the
             // clamped at the amount the person running this liquidator actually in their balance
-            val payable = maxPayable(market, borrower, false)
+            val payable = maxPayable(market, borrower, clampToWalletBalance)
 
             (payable * constants.premium * repo.runtimeCache.underlyingAssetToPrice[borrower.markets[0].underlyingAssetId]!!).divide(
                 repo.runtimeCache.underlyingAssetToPrice[market.underlyingAssetId]!!,
@@ -187,7 +191,7 @@ class Liquidator(
             return@sortWith if (netA < netB) 1 else -1
         }
 
-        return borrowers.map { processCandidate(market, it).candidate }.filter { it.seizable > BigInteger.ZERO }
+        return borrowers.map { processCandidate(market, it, clampToWalletBalance).candidate }.filter { it.seizable > BigInteger.ZERO }
 //        var bestCandidate: Candidate? = null
 //
 //        // Because we sort the borrowers based on the best case scenario
@@ -231,9 +235,9 @@ class Liquidator(
     )
 
     private suspend fun processCandidate(
-        market: LendOverseerMarket, borrower: LendMarketBorrower,
+        market: LendOverseerMarket, borrower: LendMarketBorrower, clamp: Boolean
     ): ProcessCandidateResult {
-        val payable = maxPayable(market, borrower, false)
+        val payable = maxPayable(market, borrower, clamp)
 
         var bestSeizable = BigInteger.ZERO
         var bestSeizableUsd = BigDecimal.ZERO

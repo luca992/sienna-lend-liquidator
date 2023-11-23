@@ -10,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
-import com.ionspin.kotlin.bignum.integer.BigInteger
 import com.ionspin.kotlin.bignum.integer.toBigInteger
 import io.eqoty.secretk.client.SigningCosmWasmClient
 import io.eqoty.secretk.wallet.DirectSigningWallet
@@ -90,7 +89,22 @@ fun App(viewModel: AppViewModel) {
                     }) {
                         Text(buttonText)
                     }
-                    Text("Balance: $balance ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}")
+                    Row {
+                        Column(modifier = Modifier.padding(end = 8.dp)) {
+                            Text(
+                                "Clamp to user balance:",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                "$balance ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                        }
+                        Switch(checked = viewModel.clampToWalletBalance.value, onCheckedChange = {
+                            viewModel.clampToWalletBalance.value = it
+                        })
+                    }
+
                 }
                 LazyColumn {
                     items(loans) { loan ->

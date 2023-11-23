@@ -9,6 +9,7 @@ class AppViewModel(val repo: Repository, private val liquidator: Liquidator) {
     val marketToLoans = repo.runtimeCache.marketToLoans
     val allLendMarkets = repo.runtimeCache.lendOverseerMarkets
     var selectedLendMarket = mutableStateOf(repo.runtimeCache.lendOverseerMarkets.first())
+    var clampToWalletBalance = mutableStateOf(false)
 
     suspend fun setSelectedLendMarket(lendMarket: LendOverseerMarket) {
         selectedLendMarket.value = lendMarket
@@ -16,7 +17,7 @@ class AppViewModel(val repo: Repository, private val liquidator: Liquidator) {
     }
 
     suspend fun getLoans() {
-        liquidator.updateLiquidations(selectedLendMarket.value)
+        liquidator.updateLiquidations(selectedLendMarket.value, clampToWalletBalance.value)
     }
 
     suspend fun liquidate(loan: Loan) {
