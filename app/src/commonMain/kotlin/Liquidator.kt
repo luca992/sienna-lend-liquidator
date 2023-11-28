@@ -21,7 +21,7 @@ val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST",/* "AAVE"*/)
 //"secret1w8d0ntrhrys4yzcfxnwprts7gfg5gfw86ccdpf", // sLUNA2 Luna
 //"secret1qem6e0gw2wfuzyr9sgthykvk0zjcrzm6lu94ym", // sUSTC  Terra
 val ASSETS_TO_IGNORE_SEIZING: List<UnderlyingAssetId> =
-    listOf(stkdScrtAssetId, /*symbolToAssetId("USDT"), symbolToAssetId("USDC")*/)
+    listOf(/*stkdScrtAssetId, symbolToAssetId("USDT"), symbolToAssetId("USDC")*/)
 
 class Liquidator(
     val repo: Repository,
