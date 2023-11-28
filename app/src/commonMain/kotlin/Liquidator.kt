@@ -262,11 +262,11 @@ class Liquidator(
 
         borrower.markets.forEachIndexed { i, m ->
 
-            val exchange_rate = repo.getExchangeRate(market, repo.runtimeCache.blockHeight.value)
-            // Values are in sl-tokens, so we need to convert to
-            // the underlying in order for them to be useful here.
             val info = repo.simulateLiquidation(market, borrower.id, m, repo.runtimeCache.blockHeight.value, payable)
 
+            val exchange_rate = repo.getExchangeRate(m, repo.runtimeCache.blockHeight.value)
+            // Values are in sl-tokens, so we need to convert to
+            // the underlying in order for them to be useful here.
             val seizable = BigDecimal.fromBigInteger(info.seize_amount).times(exchange_rate)
 
             if (i == 0 && info.shortfall == BigInteger.ZERO) {
