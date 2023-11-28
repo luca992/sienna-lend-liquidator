@@ -14,13 +14,13 @@ import utils.fetchAllPages
 import utils.json
 
 const val PRICES_UPDATE_INTERVAL = 3 * 60 * 1000
-val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST", "AAVE")
+val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST")
 
 //"secret149e7c5j7w24pljg6em6zj2p557fuyhg8cnk7z8", // sLUNA Luna
 //"secret1w8d0ntrhrys4yzcfxnwprts7gfg5gfw86ccdpf", // sLUNA2 Luna
 //"secret1qem6e0gw2wfuzyr9sgthykvk0zjcrzm6lu94ym", // sUSTC  Terra
 val ASSETS_TO_IGNORE_SEIZING: List<UnderlyingAssetId> =
-    listOf(stkdScrtAssetId, symbolToAssetId("USDT") /*symbolToAssetId("USDC")*/)
+    listOf(/*stkdScrtAssetId, symbolToAssetId("USDT") symbolToAssetId("USDC")*/)
 
 class Liquidator(
     val repo: Repository,
