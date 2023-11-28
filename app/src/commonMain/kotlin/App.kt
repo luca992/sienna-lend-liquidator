@@ -218,7 +218,7 @@ fun getRepositoryWithDirectSigningWallet(): Repository {
 }
 
 fun clientWithDirectSigningWallet(config: Config): SigningCosmWasmClient {
-    val wallet = DirectSigningWallet(config.mnemonic)
+    val wallet = DirectSigningWallet(config.mnemonic.ifBlank { null })
     return SigningCosmWasmClient(
         config.apiUrl, wallet, chainId = config.chainId,
     )
