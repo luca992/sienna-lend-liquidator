@@ -25,9 +25,15 @@ val logger = Logger.withTag("liquidator")
 @Composable
 fun App(viewModel: AppViewModel) {
     var buttonText by remember { mutableStateOf("Query for loans to liquidate!") }
-    val balance by remember {
+    val userUnderlyingAssetBalance by remember {
         derivedStateOf {
-            viewModel.balance[viewModel.selectedLendMarket.value.underlyingAssetId] ?: (-1).toBigInteger()
+            viewModel.userUnderlyingAssetBalance[viewModel.selectedLendMarket.value.underlyingAssetId]
+                ?: (-1).toBigInteger()
+        }
+    }
+    val userMarketBalance by remember {
+        derivedStateOf {
+            viewModel.userMarketBalance[viewModel.selectedLendMarket.value.underlyingAssetId] ?: (-1).toBigInteger()
         }
     }
     val loans by remember {
@@ -74,55 +80,91 @@ fun App(viewModel: AppViewModel) {
 
             LazyColumn(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
                 item {
-                    Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(8.dp),
-                        ) {
-                            Row(
+                    SelectionContainer {
+                        Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+                            Column(
                                 modifier = Modifier.fillMaxWidth().padding(8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("Lend Market: ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}")
-                                Row {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Lend Market: ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}")
+                                    Row {
+                                        Column {
+                                            Text(
+                                                "Clamp to user balance:", style = MaterialTheme.typography.titleSmall
+                                            )
+                                            Text(
+                                                "$userUnderlyingAssetBalance ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
+                                                style = MaterialTheme.typography.titleSmall
+                                            )
+                                        }
+                                        Switch(checked = viewModel.clampToWalletBalance.value, onCheckedChange = {
+                                            viewModel.clampToWalletBalance.value = it
+                                        })
+                                    }
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
                                     Column {
+                                        Row {
+                                            Column {
+                                                Text(
+                                                    "User market balance:",
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                                Text(
+                                                    "$userMarketBalance ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                )
+                                                Text(
+                                                    "User market balance to sl asset conversion:",
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                                Text(
+                                                    "${viewModel.userMarketBalanceSlConversion.value} sl-${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                )
+                                            }
+                                            DisableSelection {
+                                                Button(onClick = {
+                                                    coroutineScope.launch {
+                                                        viewModel.withdrawMaxUserBalance()
+                                                    }
+                                                }) {
+                                                    Text("Withdraw Max User Balance")
+                                                }
+                                            }
+                                        }
                                         Text(
-                                            "Clamp to user balance:", style = MaterialTheme.typography.titleSmall
+                                            "Underlying asset balance:",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Medium
                                         )
                                         Text(
-                                            "$balance ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
-                                            style = MaterialTheme.typography.titleSmall
+                                            "${viewModel.marketUnderlyingBalance.value} ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}" +
+                                                    " (${viewModel.marketUnderlyingBalanceSlConversion.value} sl-${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol})",
+                                            style = MaterialTheme.typography.titleSmall,
                                         )
                                     }
-                                    Switch(checked = viewModel.clampToWalletBalance.value, onCheckedChange = {
-                                        viewModel.clampToWalletBalance.value = it
-                                    })
-                                }
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column {
-                                    Text(
-                                        "Underlying asset balance:",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        "${viewModel.marketUnderlyingBalance.value} ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
-                                        style = MaterialTheme.typography.titleSmall,
-                                    )
-                                }
-                                Button(onClick = {
-                                    buttonText = "Working..."
-                                    coroutineScope.launch {
-                                        viewModel.getLoans()
-                                        buttonText = "Query for loans to liquidate!"
-                                    }
+                                    DisableSelection {
+                                        Button(onClick = {
+                                            buttonText = "Working..."
+                                            coroutineScope.launch {
+                                                viewModel.getLoans()
+                                                buttonText = "Query for loans to liquidate!"
+                                            }
 
-                                }) {
-                                    Text(buttonText)
+                                        }) {
+                                            Text(buttonText)
+                                        }
+                                    }
                                 }
                             }
                         }

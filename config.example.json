@@ -11,7 +11,7 @@
     "liquidate": 1200000,
     "withdraw": 110000
   },
-  "underlying_asset_viewing_keys": [
+  "viewing_keys": [
     {
       "address": "secret1k6u0cy4feepm6pehnz804zmwakuwdapm69tuc4",
       "viewing_key": ""

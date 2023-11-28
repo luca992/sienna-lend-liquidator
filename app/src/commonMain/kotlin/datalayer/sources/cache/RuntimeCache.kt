@@ -18,6 +18,7 @@ class RuntimeCache {
 
     val underlyingAssetToPrice = mutableStateMapOf<UnderlyingAssetId, BigDecimal>()
     var blockHeight = mutableStateOf(0.toBigInteger())
+    var userMarketBalance = mutableStateMapOf<UnderlyingAssetId, BigInteger>()
     var userBalance = mutableStateMapOf<UnderlyingAssetId, BigInteger>()
     var marketToLoans = mutableStateMapOf<LendOverseerMarket, List<Loan>>()
 

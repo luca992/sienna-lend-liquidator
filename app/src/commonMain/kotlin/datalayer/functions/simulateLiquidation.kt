@@ -22,8 +22,9 @@ import utils.json
 
 val exchangeRateCache = mutableMapOf<Pair<LendOverseerMarket, BigInteger>, BigDecimal>()
 suspend fun Repository.getExchangeRate(
-    market: LendOverseerMarket, blockHeight: BigInteger
+    market: LendOverseerMarket
 ): BigDecimal {
+    val blockHeight = runtimeCache.blockHeight.value
     return exchangeRateCache.getOrPut(market to blockHeight) {
         json.decodeFromString<String>(
             client.queryContractSmart(

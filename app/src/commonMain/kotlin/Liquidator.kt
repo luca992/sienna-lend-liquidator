@@ -10,17 +10,18 @@ import msg.overseer.LendOverseerConfig
 import msg.overseer.LendOverseerMarketQueryAnswer
 import msg.overseer.QueryMsg
 import types.*
+import utils.clamp
 import utils.fetchAllPages
 import utils.json
 
 const val PRICES_UPDATE_INTERVAL = 3 * 60 * 1000
-val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST", "AAVE")
+val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST",/* "AAVE"*/)
 
 //"secret149e7c5j7w24pljg6em6zj2p557fuyhg8cnk7z8", // sLUNA Luna
 //"secret1w8d0ntrhrys4yzcfxnwprts7gfg5gfw86ccdpf", // sLUNA2 Luna
 //"secret1qem6e0gw2wfuzyr9sgthykvk0zjcrzm6lu94ym", // sUSTC  Terra
 val ASSETS_TO_IGNORE_SEIZING: List<UnderlyingAssetId> =
-    listOf(stkdScrtAssetId, symbolToAssetId("USDT") /*symbolToAssetId("USDC")*/)
+    listOf(stkdScrtAssetId, /*symbolToAssetId("USDT"), symbolToAssetId("USDC")*/)
 
 class Liquidator(
     val repo: Repository,
@@ -87,7 +88,7 @@ class Liquidator(
         if (isExecuting) {
             return
         }
-        repo.updateUserBalance(specificMarket?.let { listOf(it) } ?: repo.runtimeCache.lendOverseerMarkets)
+        repo.updateUserBalance(specificMarket?.let { listOf(it) } ?: repo.runtimeCache.lendOverseerMarkets, BalanceType.UnderlyingAsset)
 
         isExecuting = true
 
@@ -262,7 +263,7 @@ class Liquidator(
 
         borrower.markets.forEachIndexed { i, m ->
 
-            val exchange_rate = repo.getExchangeRate(market, repo.runtimeCache.blockHeight.value)
+            val exchange_rate = repo.getExchangeRate(market)
             // Values are in sl-tokens, so we need to convert to
             // the underlying in order for them to be useful here.
             val info = repo.simulateLiquidation(market, borrower.id, m, repo.runtimeCache.blockHeight.value, payable)
@@ -370,14 +371,6 @@ class Liquidator(
         )
     }
 
-    private fun clamp(value: BigInteger, max: BigInteger): BigInteger {
-        return if (value > max) {
-            max
-        } else {
-            value
-        }
-    }
-
     private fun liquidationCostUsd(): BigDecimal {
         return repo.gasCostUsd(repo.config.gasCosts.liquidate.toBigDecimal())
     }
@@ -402,7 +395,7 @@ class Liquidator(
         logger.i("Successfully liquidated a loan by repaying $repaidAmount ${loan.market.symbol} and seized ~$${loan.candidate.seizableUsd} worth of ${loan.candidate.marketInfo.symbol} (transfered to market: ${loan.candidate.marketInfo.contract.address})!")
         logger.i("TX hash: ${response.txhash}")
 
-        repo.updateUserBalance(loan.market)
+        repo.updateUserBalance(loan.market, BalanceType.UnderlyingAsset)
     }
 }
 

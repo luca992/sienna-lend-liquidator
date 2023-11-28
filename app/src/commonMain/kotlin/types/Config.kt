@@ -16,7 +16,7 @@ data class Config(
     val multicall: ContractInfo,
     val router: ContractInfo,
     val factory: ContractInfo,
-    val underlyingAssetViewingKeys: List<ViewingKey>,
+    val viewingKeys: List<ViewingKey>,
     val gasCosts: GasCosts
 )
 
