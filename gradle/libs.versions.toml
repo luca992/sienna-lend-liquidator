@@ -16,7 +16,7 @@ kotlinx-serialization = "1.6.0"
 ktor = "2.3.6"
 kermit = "2.0.2"
 
-secretk = "6.2.2"
+secretk = "6.3.0"
 
 compose-jb = "1.5.10"
 getenv = "0.2.0"
