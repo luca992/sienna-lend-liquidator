@@ -1,7 +1,6 @@
 package datalayer.functions
 
 import Repository
-import com.ionspin.kotlin.bignum.integer.BigInteger
 import kotlinx.serialization.encodeToString
 import msg.market.LendMarketBorrowerAnswer
 import msg.market.QueryMsg
@@ -11,8 +10,10 @@ import types.LendOverseerMarket
 import utils.json
 
 suspend fun Repository.getBorrowers(
-    market: LendOverseerMarket, page: Pagination, blockHeight: BigInteger
+    market: LendOverseerMarket, page: Pagination,
 ): PaginatedResponse<LendMarketBorrowerAnswer>? {
+    updateBlockHeight()
+    val blockHeight = runtimeCache.blockHeight.value
     return try {
         json.decodeFromString(
             client.queryContractSmart(

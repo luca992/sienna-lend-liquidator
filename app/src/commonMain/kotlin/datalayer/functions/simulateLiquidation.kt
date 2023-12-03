@@ -3,8 +3,6 @@ package datalayer.functions
 import Repository
 import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import com.ionspin.kotlin.bignum.decimal.RoundingMode
-import com.ionspin.kotlin.bignum.decimal.toBigDecimal
-import com.ionspin.kotlin.bignum.integer.BigInteger
 import com.ionspin.kotlin.bignum.integer.toBigInteger
 import io.eqoty.secret.std.contract.msg.Snip20Msgs
 import io.eqoty.secretk.types.MsgExecuteContract
@@ -12,29 +10,12 @@ import io.eqoty.secretk.types.TxOptions
 import io.eqoty.secretk.types.response.TxResponseData
 import io.ktor.util.*
 import kotlinx.serialization.encodeToString
-import logger
 import msg.market.ExecuteMsg
 import msg.market.LendSimulatedLiquidation
 import msg.market.QueryMsg
 import types.LendOverseerMarket
 import types.Loan
 import utils.json
-
-val exchangeRateCache = mutableMapOf<Pair<LendOverseerMarket, BigInteger>, BigDecimal>()
-suspend fun Repository.getExchangeRate(
-    market: LendOverseerMarket
-): BigDecimal {
-    val blockHeight = runtimeCache.blockHeight.value
-    return exchangeRateCache.getOrPut(market to blockHeight) {
-        json.decodeFromString<String>(
-            client.queryContractSmart(
-                contractAddress = market.contract.address,
-                contractCodeHash = market.contract.codeHash,
-                queryMsg = json.encodeToString(QueryMsg(exchangeRate = QueryMsg.ExchangeRate(blockHeight.ulongValue())))
-            )
-        ).toBigDecimal()
-    }
-}
 
 fun BigDecimal.toFixed(decimalPlaces: Long, roundingMode: RoundingMode = RoundingMode.FLOOR): String {
     return roundToDigitPositionAfterDecimalPoint(decimalPlaces, roundingMode).toBigInteger().toString()
@@ -44,9 +25,10 @@ suspend fun Repository.simulateLiquidation(
     market: LendOverseerMarket,
     borrowerId: String,
     borrowersCollateralMarket: LendOverseerMarket,
-    blockHeight: BigInteger,
     payable: BigDecimal,
 ): LendSimulatedLiquidation {
+    updateBlockHeight()
+    val blockHeight = runtimeCache.blockHeight.value
     return json.decodeFromString(
         client.queryContractSmart(
             contractAddress = market.contract.address,

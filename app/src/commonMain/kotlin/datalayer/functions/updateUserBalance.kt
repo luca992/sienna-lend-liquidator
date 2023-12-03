@@ -2,13 +2,13 @@ package datalayer.functions
 
 import Repository
 import com.ionspin.kotlin.bignum.decimal.toBigDecimal
-import com.ionspin.kotlin.bignum.integer.BigInteger
 import com.ionspin.kotlin.bignum.integer.toBigInteger
 import io.eqoty.secret.std.contract.msg.Snip20Msgs
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonPrimitive
 import logger
 import types.LendOverseerMarket
+import types.stkdScrtAssetId
 import utils.json
 
 enum class BalanceType {
@@ -30,7 +30,7 @@ suspend fun Repository.updateUserBalance(lendOverseerMarket: LendOverseerMarket,
 
     val (query, queryType) = when (viewingKey) {
         null -> {
-            val query  = json.encodeToString(
+            val query = json.encodeToString(
                 Snip20Msgs.Query(
                     withPermit = Snip20Msgs.Query.WithPermit(
                         permit = getPermit(senderAddress, contract.address),
@@ -42,7 +42,7 @@ suspend fun Repository.updateUserBalance(lendOverseerMarket: LendOverseerMarket,
         }
 
         else -> {
-            val query  = json.encodeToString(
+            val query = json.encodeToString(
                 Snip20Msgs.Query(
                     balance = Snip20Msgs.Query.Balance(
                         address = senderAddress, key = viewingKey.viewingKey
@@ -58,7 +58,10 @@ suspend fun Repository.updateUserBalance(lendOverseerMarket: LendOverseerMarket,
             contract.address, query, contract.codeHash
         )
         when (balanceType) {
-            BalanceType.Market -> (json.parseToJsonElement(response).jsonPrimitive.content.toBigDecimal() * getExchangeRate(lendOverseerMarket)).toBigInteger()
+            BalanceType.Market -> (json.parseToJsonElement(response).jsonPrimitive.content.toBigDecimal() * getExchangeRate(
+                lendOverseerMarket
+            )).toBigInteger()
+
             BalanceType.UnderlyingAsset -> json.decodeFromString<Snip20Msgs.QueryAnswer>(response).balance!!.amount!!
         }
     } catch (t: Throwable) {

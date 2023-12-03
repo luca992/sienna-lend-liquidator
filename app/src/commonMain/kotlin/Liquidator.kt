@@ -15,13 +15,13 @@ import utils.fetchAllPages
 import utils.json
 
 const val PRICES_UPDATE_INTERVAL = 3 * 60 * 1000
-val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST",/* "AAVE"*/)
+val BLACKLISTED_SYMBOLS = listOf("LUNA", "UST")
 
 //"secret149e7c5j7w24pljg6em6zj2p557fuyhg8cnk7z8", // sLUNA Luna
 //"secret1w8d0ntrhrys4yzcfxnwprts7gfg5gfw86ccdpf", // sLUNA2 Luna
 //"secret1qem6e0gw2wfuzyr9sgthykvk0zjcrzm6lu94ym", // sUSTC  Terra
 val ASSETS_TO_IGNORE_SEIZING: List<UnderlyingAssetId> =
-    listOf(/*stkdScrtAssetId, symbolToAssetId("USDT"), symbolToAssetId("USDC")*/)
+    listOf(/*stkdScrtAssetId,*//* symbolToAssetId("USDT")*//*, symbolToAssetId("USDC")*/ symbolToAssetId("XMR"))
 
 class Liquidator(
     val repo: Repository,
@@ -88,7 +88,8 @@ class Liquidator(
         if (isExecuting) {
             return
         }
-        repo.updateUserBalance(specificMarket?.let { listOf(it) } ?: repo.runtimeCache.lendOverseerMarkets, BalanceType.UnderlyingAsset)
+        repo.updateUserBalance(specificMarket?.let { listOf(it) } ?: repo.runtimeCache.lendOverseerMarkets,
+            BalanceType.UnderlyingAsset)
 
         isExecuting = true
 
@@ -129,7 +130,7 @@ class Liquidator(
 
     private suspend fun marketCandidates(market: LendOverseerMarket, clampToWalletBalance: Boolean): List<Candidate> {
         val candidates = fetchAllPages({ page ->
-            repo.getBorrowers(market, page, repo.runtimeCache.blockHeight.value)
+            repo.getBorrowers(market, page)
         }, 1u, { x ->
             if (x.liquidity.shortfall == BigInteger.ZERO) return@fetchAllPages false
 
@@ -191,7 +192,7 @@ class Liquidator(
             return@sortWith if (netA < netB) 1 else -1
         }
 
-        return borrowers.map { processCandidate(market, it, clampToWalletBalance).candidate }
+        return borrowers.map { processCandidates(market, it, clampToWalletBalance) }.flatten()
             .filter { it.seizable > BigInteger.ZERO }
 //        var bestCandidate: Candidate? = null
 //
@@ -231,76 +232,38 @@ class Liquidator(
 //        return bestCandidate
     }
 
-    data class ProcessCandidateResult(
-        val best_case: Boolean, val candidate: Candidate
-    )
 
-    private suspend fun processCandidate(
+    private suspend fun processCandidates(
         market: LendOverseerMarket, borrower: LendMarketBorrower, clampToWalletBalance: Boolean
-    ): ProcessCandidateResult {
+    ): List<Candidate> {
         val payable = maxPayable(market, borrower, clampToWalletBalance)
 
-        var bestSeizable = BigInteger.ZERO
-        var bestSeizableUsd = BigDecimal.ZERO
-        var bestPayable = BigDecimal.ZERO
-        var marketIndex = 0
-
+        val candidates = mutableListOf<Candidate>()
         if (payable < 1) {
-            return ProcessCandidateResult(
-                best_case = true,
-                candidate = Candidate(
-                    id = borrower.id,
-                    totalPayable = (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toBigInteger(),
-                    payable = payable,
-                    payableUsd = payable,
-                    seizable = bestSeizable,
-                    seizableUsd = bestSeizableUsd,
-                    marketInfo = borrower.markets[marketIndex],
-                    clampedToWalletBalance = clampToWalletBalance
-                ),
-            )
+            return candidates
         }
 
-        borrower.markets.forEachIndexed { i, m ->
 
-            val exchange_rate = repo.getExchangeRate(market)
+        for (i in 0 until borrower.markets.size) {
+            val m = borrower.markets[i]
+
+            val info = repo.simulateLiquidation(market, borrower.id, m, payable)
+
+            val exchange_rate = repo.getExchangeRate(m)
             // Values are in sl-tokens, so we need to convert to
             // the underlying in order for them to be useful here.
-            val info = repo.simulateLiquidation(market, borrower.id, m, repo.runtimeCache.blockHeight.value, payable)
-
             val seizable = BigDecimal.fromBigInteger(info.seize_amount).times(exchange_rate)
-
-            if (i == 0 && info.shortfall == BigInteger.ZERO) {
-                // We can liquidate using the most profitable asset so no need to go further.
-                return ProcessCandidateResult(
-                    best_case = true,
-                    candidate = Candidate(
-                        id = borrower.id,
-                        payable = payable,
-                        payableUsd = repo.usdValue(payable, market.underlyingAssetId, market.decimals),
-                        seizable = seizable.toBigInteger(),
-                        seizableUsd = repo.usdValue(seizable, m.underlyingAssetId, m.decimals),
-                        marketInfo = m,
-                        totalPayable = (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toBigInteger(),
-                        clampedToWalletBalance = clampToWalletBalance
-                    ),
-                )
-            }
 
 
             val actual_payable: BigDecimal
             val actual_seizable: BigDecimal
             val actual_seizable_usd: BigDecimal
 
-            var done = false
 
             if (info.shortfall == BigInteger.ZERO) {
                 actual_payable = payable
                 actual_seizable = seizable
                 actual_seizable_usd = repo.usdValue(seizable, m.underlyingAssetId, m.decimals)
-
-                // We don't have to check further since this is the second-best scenario that we've got.
-                done = true
             } else {
                 // Otherwise check by how much we'd need to decrease our repay amount in order for the
                 // liquidation to be successful and also decrease the seized amount by that percentage.
@@ -325,29 +288,21 @@ class Liquidator(
                 }
             }
 
-            if (actual_seizable_usd > bestSeizableUsd) {
-                bestPayable = actual_payable
-                bestSeizable = actual_seizable.toBigInteger()
-                bestSeizableUsd = actual_seizable_usd
-                marketIndex = i
-
-                if (done) return@forEachIndexed
-            }
+            candidates.add(
+                Candidate(
+                    id = borrower.id,
+                    payable = actual_payable,
+                    payableUsd = repo.usdValue(actual_payable, market.underlyingAssetId, market.decimals),
+                    seizable = actual_seizable.toBigInteger(),
+                    seizableUsd = actual_seizable_usd,
+                    marketInfo = borrower.markets[i],
+                    totalPayable = (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toBigInteger(),
+                    clampedToWalletBalance = clampToWalletBalance
+                )
+            )
         }
 
-        return ProcessCandidateResult(
-            best_case = false,
-            candidate = Candidate(
-                id = borrower.id,
-                payable = bestPayable,
-                payableUsd = repo.usdValue(bestPayable, market.underlyingAssetId, market.decimals),
-                seizable = bestSeizable,
-                seizableUsd = bestSeizableUsd,
-                marketInfo = borrower.markets[marketIndex],
-                totalPayable = (BigDecimal.fromBigInteger(borrower.actualBalance) * constants.closeFactor).toBigInteger(),
-                clampedToWalletBalance = clampToWalletBalance
-            ),
-        )
+        return candidates
     }
 
 
@@ -382,7 +337,6 @@ class Liquidator(
             loan.market,
             loan.candidate.id,
             loan.candidate.marketInfo,
-            repo.runtimeCache.blockHeight.value,
             loan.candidate.payable
         )
         logger.i("Simulated liquidation: $simulatedLiquidation")

@@ -27,6 +27,6 @@ suspend fun Repository.redeemToken(
         ),
     )
 
-    return client.execute(listOf(msg), txOptions = TxOptions(gasLimit = 200_000))
+    return client.execute(listOf(msg), txOptions = TxOptions(gasLimit = 300_000))
 }
 
