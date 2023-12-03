@@ -111,35 +111,32 @@ fun App(viewModel: AppViewModel) {
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Column {
-                                        Row {
-                                            Column {
-                                                Text(
-                                                    "User market balance:",
-                                                    style = MaterialTheme.typography.titleSmall,
-                                                    fontWeight = FontWeight.Medium
-                                                )
-                                                Text(
-                                                    "$userMarketBalance ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
-                                                    style = MaterialTheme.typography.titleSmall,
-                                                )
-                                                Text(
-                                                    "User market balance to sl asset conversion:",
-                                                    style = MaterialTheme.typography.titleSmall,
-                                                    fontWeight = FontWeight.Medium
-                                                )
-                                                Text(
-                                                    "${viewModel.userMarketBalanceSlConversion.value} sl-${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
-                                                    style = MaterialTheme.typography.titleSmall,
-                                                )
-                                            }
-                                            DisableSelection {
-                                                Button(onClick = {
-                                                    coroutineScope.launch {
-                                                        viewModel.withdrawMaxUserBalance()
-                                                    }
-                                                }) {
-                                                    Text("Withdraw Max User Balance")
+
+                                        Text(
+                                            "User market balance:",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Text(
+                                            "$userMarketBalance ${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
+                                            style = MaterialTheme.typography.titleSmall,
+                                        )
+                                        Text(
+                                            "User market balance to sl asset conversion:",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Text(
+                                            "${viewModel.userMarketBalanceSlConversion.value} sl-${viewModel.selectedLendMarket.value.underlyingAssetId.snip20Symbol}",
+                                            style = MaterialTheme.typography.titleSmall,
+                                        )
+                                        DisableSelection {
+                                            Button(onClick = {
+                                                coroutineScope.launch {
+                                                    viewModel.withdrawMaxUserBalance()
                                                 }
+                                            }) {
+                                                Text("Withdraw Max User Balance")
                                             }
                                         }
                                         Text(
