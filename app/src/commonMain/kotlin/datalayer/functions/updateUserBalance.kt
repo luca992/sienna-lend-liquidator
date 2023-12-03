@@ -3,6 +3,7 @@ package datalayer.functions
 import Repository
 import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import com.ionspin.kotlin.bignum.integer.toBigInteger
+import getExchangeRate
 import io.eqoty.secret.std.contract.msg.Snip20Msgs
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonPrimitive
