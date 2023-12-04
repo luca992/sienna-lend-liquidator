@@ -1,6 +1,7 @@
 import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import com.ionspin.kotlin.bignum.integer.BigInteger
+import datalayer.functions.updateBlockHeight
 import kotlinx.serialization.encodeToString
 import msg.market.QueryMsg
 import types.LendOverseerMarket
@@ -10,6 +11,7 @@ val exchangeRateCache = mutableMapOf<Pair<LendOverseerMarket, BigInteger>, BigDe
 suspend fun Repository.getExchangeRate(
     market: LendOverseerMarket
 ): BigDecimal {
+    updateBlockHeight()
     val blockHeight = runtimeCache.blockHeight.value
     return exchangeRateCache.getOrPut(market to blockHeight) {
         json.decodeFromString<String>(
