@@ -62,6 +62,7 @@ class AppViewModel(val repo: Repository, private val liquidator: Liquidator) {
     suspend fun withdrawMaxUserBalance() {
         updateMarketBalance()
         val maxWithdrawal = clamp(userMarketBalanceSlConversion.value!!, (BigDecimal.fromBigInteger(marketUnderlyingBalanceSlConversion.value!!) * 0.99999.toBigDecimal()).toBigInteger())
+        logger.i("withdrawMaxUserBalance: $maxWithdrawal ${selectedLendMarket.value.underlyingAssetId.snip20Symbol}")
         repo.redeemToken(selectedLendMarket.value, maxWithdrawal)
         updateMarketBalance()
         updateUserMarketBalance()
