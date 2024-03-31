@@ -9,19 +9,19 @@ com-android-application = { id = "com.android.application", version.ref = "agp" 
 
 [versions]
 
-kotlin = "1.9.20"
+kotlin = "1.9.23"
 agp = "8.1.2"
 
-kotlinx-serialization = "1.6.0"
-ktor = "2.3.6"
-kermit = "2.0.2"
+kotlinx-serialization = "1.6.3"
+ktor = "2.3.9"
+kermit = "2.0.3"
 
-secretk = "6.3.0"
+secretk = "6.4.0"
 
-compose-jb = "1.5.10"
-getenv = "0.2.0"
+compose-jb = "1.6.1"
+getenv = "0.3.0"
 
-bignum = "0.3.8"
+bignum = "0.3.9"
 
 [libraries]
 
