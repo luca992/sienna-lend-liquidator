@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Config(
     val coinGeckoUrl: String,
+    val coinGeckoDemoApiKey: String,
     val bandUrl: String,
     val apiUrl: String,
     val chainId: String,

@@ -3,6 +3,7 @@
   "mnemonic": "",
   "api_url": "https://secret-4.api.trivium.network:1317",
   "coin_gecko_url": "https://api.coingecko.com/api/",
+  "coin_gecko_demo_api_key": "",
   "band_url": "https://laozi1.bandchain.org/api/",
   "interval": 120000,
   "max_price_impact": 0.05,

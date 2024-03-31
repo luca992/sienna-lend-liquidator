@@ -21,7 +21,7 @@ suspend fun Repository.updatePrices() {
     contractAddrsBatches.forEach { contractAddrs ->
         val contractAddrToUsdPrice: Map<String, DenomPriceValue> = httpClient.getResponse(
             config.coinGeckoUrl,
-            "v3/simple/token_price/secret?vs_currencies=usd&contract_addresses=${contractAddrs.joinToString(",")}"
+            "v3/simple/token_price/secret?vs_currencies=usd&contract_addresses=${contractAddrs.joinToString(",")}&x_cg_demo_api_key=${config.coinGeckoDemoApiKey}"
         )
 
         runtimeCache.underlyingAssetToPrice.keys.forEach { assetToPriceKey ->
@@ -36,10 +36,10 @@ suspend fun Repository.updatePrices() {
     // The latest one can be found here: https://docs.bandchain.org/technical-specifications/band-endpoints.html
     val symbolsToFetch =
         runtimeCache.underlyingAssetToPrice.filter { it.value == 0.0.toBigDecimal() }.keys.map { it.lendMarketSymbol }
-    val symbolsToFetchStr = symbolsToFetch.map { "symbols=${it}" }.joinToString("&")
     require(symbolsToFetch.none { it.contains("SCRT") }) { "SCRT variants should be fetched by contract address" }
+    val symbolsToFetchStr = symbolsToFetch.map { "symbols=${it}" }.joinToString("&")
     val prices: PriceResults = httpClient.getResponse(
-        config.bandUrl, "oracle/v1/request_prices?$symbolsToFetchStr"
+        config.bandUrl, "oracle/v1/request_prices?$symbolsToFetchStr&x_cg_demo_api_key=${config.coinGeckoDemoApiKey}"
     )
     prices.priceResults.forEach { x ->
         val price = (x.px.toDouble().toBigDecimal() / x.multiplier.toDouble().toBigDecimal())
